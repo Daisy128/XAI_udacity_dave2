@@ -1,4 +1,4 @@
-from utils.mutation_utils import *
+from mutation.utils.mutation_utils import *
 import mutation.utils.constants as const
 from mutation.utils.logger_setup import setup_logger
 
@@ -18,7 +18,7 @@ def mutate_model(data):
 
     mutation_types = ['D', 'H']
 
-    mutants_path = os.path.join(str(root_dir), const.save_paths["mutated"], model_name)
+    mutants_path = os.path.join(str(root_dir), "mutation", const.save_paths["mutated"], model_name)
     if not os.path.exists(mutants_path):
         os.makedirs(mutants_path)
         print("Created mutants directory: " + mutants_path)

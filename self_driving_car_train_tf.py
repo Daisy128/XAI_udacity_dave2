@@ -127,7 +127,8 @@ def train_model(model, x_train, x_test, y_train, y_test, model_name, track_index
     # model_folder: ads/ ads-mutation(/add_weights_regularization)
     # model_name: track1-dave2-00x.h5/track1-dave2-add_weights_regularization-001.h5
     if mutate_cfgs['do_mutate']:
-        model_folder = os.path.join(mutate_cfgs['mutate_dir'], mutate_cfgs["mutate_func"])
+        model_folder = os.path.join(mutate_cfgs['mutate_dir'],
+                                    mutate_cfgs["mutate_func"]+ "_" + mutate_cfgs["mutate_func_params"]["type"]+ "_" + mutate_cfgs["mutate_func_params"]["layer"])
         default_prefix_name = f'track{track_index}-{model_name}-{mutate_cfgs["mutate_func"]}'
     else:
         model_folder = Training_Configs['model_dir']

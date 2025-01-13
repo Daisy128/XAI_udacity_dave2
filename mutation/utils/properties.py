@@ -5,7 +5,9 @@
 ###
 # Training Data Mutations
 ###
+import keras.regularizers
 from keras.regularizers import l1_l2, l1, l2
+from utils.conf import mutate_cfgs
 
 model_name = ""
 model_type = "regression"
@@ -143,12 +145,12 @@ disable_batching = {
 
 change_activation_function = {
     "name": 'change_activation_function',
-    "activation_function_udp": False,
+    "activation_function_udp": 'exponential',
     "layer_udp": 6,
     "runs_number": 10,
     "annotation_params": [],
     "layer_mutation": True,
-    "current_index": 0,
+    "current_index": 6,
     "mutation_target": None,
     "search_type": 'exhaustive'
 }
@@ -262,12 +264,13 @@ change_dropout_rate = {
 
 add_weights_regularisation = {
     "name": 'add_weights_regularisation',
-    "weights_regularisation_udp": l1(),
+    "weights_regularisation_udp": getattr(keras.regularizers, mutate_cfgs["mutate_func_params"]["type"])(0.01),
+    # "weights_regularisation_udp": l2(),
     "layer_udp": 3,
     "runs_number": 10,
     "annotation_params": [],
     "layer_mutation": True,
-    "current_index": 0,
+    "current_index": int(mutate_cfgs["mutate_func_params"]["layer"]),
     "mutation_target": None,
     "search_type": 'exhaustive'
 }

@@ -141,7 +141,9 @@ def operator_add_weights_regularisation(model):
 
     if "kernel_regularizer" in tmp['layers'][current_index]['config'] and \
             tmp['layers'][current_index]['config'].get('kernel_regularizer') is None:
+        print("Start adding weights regulariser")
         if props.add_weights_regularisation["weights_regularisation_udp"] is not None:
+            print("Weights regularisation decides on udp")
             new_regulariser = props.add_weights_regularisation["weights_regularisation_udp"]
         elif props.add_weights_regularisation["mutation_target"] is None:
             regularisers = copy.copy(const.keras_regularisers)
@@ -152,7 +154,7 @@ def operator_add_weights_regularisation(model):
 
         print("____________________________________")
         print("Current Index: " + str(current_index))
-        print("New Reg:" + new_regulariser)
+        print("New Reg:" + str(new_regulariser))
 
         tmp['layers'][current_index]['config']['kernel_regularizer'] = new_regulariser
     else:

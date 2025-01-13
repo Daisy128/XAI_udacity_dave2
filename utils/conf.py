@@ -65,16 +65,20 @@ model_cfgs['resized_image_height'] = 80
 
 model_cfgs['num_outputs'] = 2 # when we wish to predict steering and throttle:
 
-perturb_cfgs = defaultdict()
+perturb_cfgs = {}
+perturb_cfgs['visualize'] = False
 perturb_cfgs['scale'] = 6 # auto-iterate scale from 0 to 6
 perturb_cfgs['image_height'] = 160
 perturb_cfgs['image_width'] = 320
 perturb_cfgs['low_speed_threshold'] = 0.01
 perturb_cfgs['low_speed_limit'] = 20
+perturb_cfgs['total_crash_limit'] = {"lake": (3,6), "mountain": (3, 8)}
 
-mutate_cfgs = defaultdict()
+mutate_cfgs = {}
 mutate_cfgs['do_mutate'] = True
 mutate_cfgs['mutate_dir'] = "ads-mutation"
+mutate_cfgs['mutate_func'] = "add_weights_regularisation"
+mutate_cfgs['mutate_func_params'] = {"type": "l1_l2", "layer": "6"}
 
 class Conf:
     def __init__(self):

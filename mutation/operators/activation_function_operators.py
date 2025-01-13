@@ -26,7 +26,6 @@ def operator_change_activation_function(model):
 
     print("Changing AF of layer" + str(current_index))
     if tmp['layers'][current_index]['config'].get('activation'):# and tmp['layers'][current_index]['config']['activation'] != "linear"
-
         if props.change_activation_function["activation_function_udp"] is not None:
             new_act_func = props.change_activation_function["activation_function_udp"]
         elif props.change_activation_function["mutation_target"] is None:
@@ -75,7 +74,7 @@ def operator_remove_activation_function(model):
     if tmp['layers'][current_index]['config'].get('activation') and tmp['layers'][current_index]['config']['activation'] != "linear":
         tmp['layers'][current_index]['config']['activation'] = 'linear'
     else:
-        raise e.AddAFMutationError(str(current_index),"Not possible to apply the remove activation function mutation to layer ")
+        raise Exception(str(current_index),"Not possible to apply the remove activation function mutation to layer ")
 
     model = mu.model_from_config(model, tmp)
 
@@ -118,7 +117,7 @@ def operator_add_activation_function(model):
 
         layer_config['activation'] = new_act_func
     else:
-        raise e.AddAFMutationError(str(current_index),
+        raise Exception(str(current_index),
                                    "Not possible to apply the add activation function mutation to layer ")
 
         # Rebuild the model from the updated config
