@@ -10,7 +10,6 @@ from perturbationdrive.utils.image_log import *
 from typing import List, Union, Dict, Tuple
 import os, copy, time
 
-
 class PerturbationDrive:
     """
     Simulator independent ADS robustness benchmarking
@@ -165,3 +164,7 @@ class PerturbationDrive:
 
         # tear down the simulator
         self.simulator.tear_down()
+
+    def perturb_tracks(self,
+                       perturbation_functions: List[str],):
+        pass

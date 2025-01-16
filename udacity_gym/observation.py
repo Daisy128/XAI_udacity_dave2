@@ -31,7 +31,6 @@ class UdacityObservation:
         self.lap = lap
         self.sector = sector
         self.time = time
-        # self.angle_diff = angle_diff
 
     def is_ready(self):
         # return self.input_image is not None and self.semantic_segmentation is not None
@@ -49,5 +48,4 @@ class UdacityObservation:
             'sector': self.sector,
             'next_cte': self.next_cte,
             'time': self.time,
-            # 'angle_diff': self.angle_diff
         }

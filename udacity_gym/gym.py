@@ -48,7 +48,7 @@ class UdacityGym(gym.Env):
     def step(
             self,
             action: UdacityAction
-    ) -> tuple[UdacityObservation, SupportsFloat, bool, bool, dict[str, Any]]:
+    ) -> tuple[UdacityObservation, SupportsFloat, bool, bool, dict[str, Any], dict[str, Any]]:
         """
         :param action: (np.ndarray)
         :return: (np.ndarray, float, bool, dict)
@@ -58,8 +58,15 @@ class UdacityGym(gym.Env):
 
         observation = self.simulator.step(action)
 
+        crash = {
+            "out_of_track": self.simulator.sim_state['out_of_track'],
+            "collision": self.simulator.sim_state['collision'],
+            "low_speed": self.simulator.sim_state['low_speed'],
+            "is_crashed": self.simulator.sim_state['is_crashed']
+        }
+
         # TODO: fix the two Falses
-        return observation, observation.cte, False, False, {
+        return observation, observation.cte, False, False, crash, {
             'events': self.simulator.sim_state['events'],
             'episode_metrics': self.simulator.sim_state['episode_metrics'],
         }
@@ -82,6 +89,7 @@ class UdacityGym(gym.Env):
         return None
 
     def observe(self) -> UdacityObservation:
+        self.simulator.sim_state['done'] = self.simulator.is_crash_limit()
         return self.simulator.observe()
 
     def close(self) -> None:

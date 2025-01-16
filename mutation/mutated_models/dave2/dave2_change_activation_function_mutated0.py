@@ -108,12 +108,6 @@ def train_model(model, x_train, x_test, y_train, y_test, model_name, track_index
     checkpoint = ModelCheckpoint(name, monitor='val_loss', verbose=0, save_best_only=False, mode='auto')
     early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=10, mode='auto')
     model = activation_function_operators.operator_change_activation_function(model)
-    print("NOW CURRENT MODLE IS: ", )
-    for i, layer in enumerate(model.layers):
-        activation_function = layer.activation if hasattr(layer,
-                                                          'activation') else 'No activation (non-activation layer)'
-        print(f"Layer {i + 1} - {layer.name}: Activation = {activation_function}")
-
     model.compile(loss='mean_squared_error', optimizer=Adam(lr=Training_Configs['LEARNING_RATE']))
     (train_generator, val_generator) = get_generators(x_train, x_test, y_train, y_test)
     history = model.fit(train_generator, validation_data=val_generator, epochs=Training_Configs['EPOCHS'], callbacks=[checkpoint, early_stop], verbose=1)

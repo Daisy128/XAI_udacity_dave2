@@ -721,43 +721,43 @@ FUNCTION_MAPPING = {
 # mapping of dynamic perturbation functions to their image path and iterator name
 FILTER_PATHS = {
     dynamic_snow_filter: (
-        "./perturbationdrive/OverlayMasks/snow.mp4",
+        "./perturbationdrive/operators/OverlayMasks/snow.mp4",
         "_snow_iterator",
         [8, 255, 18],
         45,
     ),
     dynamic_lightning_filter: (
-        "./perturbationdrive/OverlayMasks/lightning.mp4",
+        "./perturbationdrive/operators/OverlayMasks/lightning.mp4",
         "_lightning_iterator",
         [32, 91, 10],
         45,
     ),
     dynamic_rain_filter: (
-        "./perturbationdrive/OverlayMasks/rain.mp4",
+        "./perturbationdrive/operators/OverlayMasks/rain.mp4",
         "_rain_iterator",
         [3, 129, 8],
         40,
     ),
     dynamic_raindrop_filter: (
-        "./perturbationdrive/OverlayMasks/test.mp4",
+        "./perturbationdrive/operators/OverlayMasks/test.mp4",
         "_raindrop_iterator",
         [8, 255, 18],
         45,
     ),
     dynamic_object_overlay: (
-        "./perturbationdrive/OverlayMasks/birds.mp4",
+        "./perturbationdrive/operators/OverlayMasks/birds.mp4",
         "_bird_iterator",
         [66, 193, 5],
         40,
     ),
     dynamic_smoke_filter: (
-        "./perturbationdrive/OverlayMasks/smoke.mp4",
+        "./perturbationdrive/operators/OverlayMasks/smoke.mp4",
         "_smoke_iterator",
         [37, 149, 59],
         75
     ),
     dynamic_sun_filter: (
-        "./perturbationdrive/OverlayMasks/sun.mp4",
+        "./perturbationdrive/operators/OverlayMasks/sun.mp4",
         "_sun_iterator",
         [9, 166,  56],
         60
@@ -766,37 +766,37 @@ FILTER_PATHS = {
 
 STATIC_PATHS = {
     static_snow_filter: (
-        "./perturbationdrive/OverlayMasks/static_snow.png",
+        "./perturbationdrive/operators/OverlayMasks/static_snow.png",
         "_snow_mask",
         [8, 255, 18],
         45.0,
     ),
     static_lightning_filter: (
-        "./perturbationdrive/OverlayMasks/static_light.png",
+        "./perturbationdrive/operators/OverlayMasks/static_light.png",
         "_lightning_mask",
         [32, 91, 10],
         45,
     ),
     static_rain_filter: (
-        "./perturbationdrive/OverlayMasks/static_rain.png",
+        "./perturbationdrive/operators/OverlayMasks/static_rain.png",
         "_rain_mask",
         [3, 129, 8],
         40,
     ),
     static_object_overlay: (
-        "./perturbationdrive/OverlayMasks/static_birds.png",
+        "./perturbationdrive/operators/OverlayMasks/static_birds.png",
         "_bird_mask",
         [66, 193, 5],
         40,
     ),
     static_smoke_filter: (
-        "./perturbationdrive/OverlayMasks/static_smoke.png",
+        "./perturbationdrive/operators/OverlayMasks/static_smoke.png",
         "_smoke_mask",
         [37, 149, 59],
         75
     ),
     static_sun_filter: (
-        "./perturbationdrive/OverlayMasks/static_sun.png",
+        "./perturbationdrive/operators/OverlayMasks/static_sun.png",
         "_sun_mask",
         [9, 166,  56],
         60

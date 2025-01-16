@@ -1,13 +1,10 @@
-import copy
 import pathlib
 import time
-# from multiprocessing import Manager
-from .global_manager import get_simulator_state
-
 from .action import UdacityAction
 from .logger import CustomLogger
 from .observation import UdacityObservation
 from .unity_process import UnityProcess
+from .executor import UdacityExecutor
 
 
 # TODO: it should extend an abstract simulator
@@ -21,24 +18,31 @@ class UdacitySimulator:
     ):
         # Simulator path
         self.simulator_exe_path = sim_exe_path
+
+        # UnityProcess
         self.sim_process = UnityProcess()
+
         # Simulator network settings
-        from .executor import UdacityExecutor
+        # UdacityExecutor
         self.sim_executor = UdacityExecutor(host, port)
         self.host = host
         self.port = port
         # Simulator logging
         self.logger = CustomLogger(str(self.__class__))
-        # Simulator state
-        self.sim_state = get_simulator_state()
+        # Simulator state, values defined in the end of the code
+        self.sim_state = simulator_state
 
         # Verify binary location
         if not pathlib.Path(sim_exe_path).exists():
             self.logger.error(f"Executable binary to the simulator does not exists. "
                               f"Check if the path {self.simulator_exe_path} is correct.")
 
+    # Reinforcement learning
+    # Provide information about the new state of the env after the 'action'
+    # Receive an action, apply it to sim_state
+    # return the observations after the action
     def step(self, action: UdacityAction):
-        self.sim_state['action'] = action
+        self.sim_state['action'] = action  # 2 vars: steering_angle + throttle
         return self.observe()
 
     def observe(self):
@@ -52,7 +56,7 @@ class UdacitySimulator:
         # We wait the confirmation of the pause command
         while self.sim_state.get('sim_state', '') != 'paused':
             # TODO: modify the sleeping time with constant
-            # print("waiting for pause...")
+            print("waiting for pause...")
             time.sleep(0.1)
         # self.logger.info("exiting pause")
 
@@ -62,6 +66,7 @@ class UdacitySimulator:
         # We wait the confirmation of the resume command
         while self.sim_state.get('sim_state', '') != 'running':
             # TODO: modify the sleeping time with constant
+            print("-----------Do resume-----------")
             time.sleep(0.1)
 
     # # TODO: add other track properties
@@ -69,6 +74,7 @@ class UdacitySimulator:
     #     self.sim_state['track'] = track_name
 
     def reset(self, new_track_name: str = 'lake', new_weather_name: str = 'sunny', new_daytime_name: str = 'day'):
+        print("-----------Do reset-----------")
         observation = UdacityObservation(
             input_image=None,
             semantic_segmentation=None,
@@ -80,8 +86,7 @@ class UdacitySimulator:
             lap=0,
             sector=0,
             next_cte=0.0,
-            time=-1,
-            # angle_diff=0.0
+            time=-1
         )
         action = UdacityAction(
             steering_angle=0.0,
@@ -97,7 +102,12 @@ class UdacitySimulator:
         }
         self.sim_state['events'] = []
         self.sim_state['episode_metrics'] = None
-
+        self.sim_state['crash_log'] = None
+        self.sim_state['done'] = False
+        self.sim_state['out_of_track'] = 0
+        self.sim_state['collision'] = 0
+        self.sim_state['low_speed'] = 0
+        self.sim_state['is_crashed'] = False
         return observation, {}
 
     def start(self):
@@ -108,15 +118,35 @@ class UdacitySimulator:
         )
         self.sim_executor.start()
 
+    # To change the crash limits from simulaor
+    def is_crash_limit(self) -> bool:
+        # observation = self.sim_state['observation']
+        # if observation.cte > 4:
+        #     return True
+        # return False
+        pass
+
     def close(self):
+        print("-----------Do close----------")
         self.sim_process.close()
 
-# manager = Manager()
-#
-# simulator_state = manager.dict()
-# simulator_state['observation'] = None
-# simulator_state['action'] = UdacityAction(0.0, 0.0)
-# simulator_state['paused'] = False
-# simulator_state['track'] = "lake"
-# simulator_state['events'] = []
-# simulator_state['episode_metrics'] = None
+
+from multiprocessing import Manager
+
+manager = Manager()
+
+simulator_state = manager.dict()
+simulator_state['observation'] = None
+simulator_state['action'] = UdacityAction(0.0, 0.0)
+simulator_state['paused'] = False
+simulator_state['track'] = "lake"
+simulator_state['events'] = []
+simulator_state['crash_log']: str = None
+simulator_state['done']: bool = False
+simulator_state['out_of_track']: int = 0
+simulator_state['collision']: int = 0
+simulator_state['low_speed']: int = 0
+simulator_state['is_crashed']: bool = False
+simulator_state['episode_metrics'] = None
+
+# print(simulator_state['track'])

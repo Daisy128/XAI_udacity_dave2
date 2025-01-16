@@ -51,7 +51,6 @@ def preprocess(image, debug = False):
     Combine all preprocess functions into one
     """
     image = np.array(image)
-
     # image0 = (image * 255).astype('uint8')  # ! In this way, input image has to be [0,1]
     #print(f"max image 1 {image0.max()}")
     # pre-normalize to [0, 1]:

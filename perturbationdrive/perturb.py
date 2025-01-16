@@ -1,24 +1,22 @@
-import os
 import gc
 import time
 import numpy as np
 from PIL import Image
-# import eventlet
-# eventlet.monkey_patch()
 from concurrent.futures import ThreadPoolExecutor
-from perturbationdrive.imageperturbations import ImagePerturbation
-from perturbationdrive.Simulator.image_callback import ImageCallBack
+
+from perturbationdrive import ImageCallBack
 from perturbationdrive.utils.image_log import *
-from udacity_gym import UdacitySimulator, UdacityGym
-from udacity_gym.agent_tf import SupervisedAgent_tf
 from utils.conf import track_infos, perturb_cfgs
+from udacity_gym.agent_tf import SupervisedAgent_tf
+from udacity_gym import UdacitySimulator, UdacityGym
+from perturbationdrive.imageperturbations import ImagePerturbation
 
 def perturbed_simulate(data):
 
     track_index = data['track_index']
     model_name = data['model_name']
     model_path = data['model_path']
-    perturbations = data['perturbation']
+    perturbations = data['perturbations']
     
     TRACK = track_infos[track_index]['track_name']  # lake, mountain
     DAYTIME = "day"
@@ -55,7 +53,7 @@ def perturbed_simulate(data):
     simulator.start()
     
     for perturbation in perturbations:
-        scale = 0
+        scale = data['start_index']
         crash_not_enough = crash_too_much = False
         while True:
             print("---------------------------------------")
@@ -74,7 +72,7 @@ def perturbed_simulate(data):
 
             # LOG_PATH here should be ABSOLUTE, info is required in csv log file
             LOG_NAME = f"{TRACK}_{perturbation}_scale{scale}_log.csv"
-            LOG_PATH = f"/home/jiaqq/Project-1120/PerturbationDrive/udacity/perturb_logs/{TRACK}/{TRACK}_{perturbation}_scale{scale}_log"
+            LOG_PATH = f"/home/jiaqq/Documents/ThirdEye-II/perturbationdrive/logs/{TRACK}/{TRACK}_{perturbation}_scale{scale}_log"
 
             image_folder = os.path.join(LOG_PATH, "image_logs")
 
@@ -89,35 +87,15 @@ def perturbed_simulate(data):
             while obs.lap == 1 and keep_running and total_crash <= TOTAL_CRASH_LIMIT[1]:
                 frame += 1 # used to store images and csv_data
                 image_path = os.path.join(image_folder, f"{frame}.png")
+
+                # isinstance(obs.input_image, PIL.PngImagePlugin.PngImageFile)
                 # np.array(obs.input_image)为 RGB, shape (160, 320, 3)
                 image = image_perturbation.perturbation(np.array(obs.input_image), perturbation, scale)
-                obs.input_image = image
+                obs.input_image = image # isinstance(image, np.ndarray)
 
-                # image_buffer = BytesIO()
-                # image_buffer.save(image_buffer)
-                try:
-                    image = Image.fromarray(image)
-                except Exception as e:
-                    # print(f"While saving images in buffer: {e}")
-
-                    if image.dtype != np.uint8:
-                        image = (image * 255).clip(0, 255).astype(np.uint8)
-
-                    if image.shape != (IMAGE_SIZE[0], IMAGE_SIZE[1], 3):
-                        image = np.resize(image, (IMAGE_SIZE[0], IMAGE_SIZE[1], 3))
-
-                    # image = Image.fromarray(image)
-
-                image = np.array(image)
                 temporary_images.append((image_path, image))
 
-                # image = Image.fromarray(obs.input_image)
-                # image.save(image_path)  # plt.imsave(image_path, obs.input_image)
-                # image = None
-                # gc.collect()
-
-                actions = agent(obs)
-                # print(obs.input_image.shape) # (160, 320, 3)
+                actions = agent(obs) # obs.input_image.shape == (160, 320, 3)
 
                 if monitor:
                     monitor.display_img(obs.input_image, f"{actions.steering_angle}", f"{actions.throttle}", perturbation)

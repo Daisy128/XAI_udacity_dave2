@@ -24,6 +24,7 @@ class SupervisedAgent_tf(UdacityAgent):
     ):
         super().__init__(before_action_callbacks=None, after_action_callbacks=None)
 
+        # assert检查模型路径是否存在，不存在抛出错误信息
         assert os.path.exists(model_path), 'Model path {} not found'.format(model_path)
 
         self.model = load_model(model_path)
@@ -33,9 +34,9 @@ class SupervisedAgent_tf(UdacityAgent):
 
     def action(self, observation: UdacityObservation, *args, **kwargs) -> UdacityAction:
         # observation by getting coordinate each time
-        obs = observation.input_image # batch of images
+        obs = observation.input_image  # batch of images
 
-        #print("Observations:", obs)
+        # print("Observations:", obs)
         obs = preprocess(obs)
 
         #  the model expects 4D array
@@ -51,19 +52,19 @@ class SupervisedAgent_tf(UdacityAgent):
             import time
             time_start = time.time()
             steering = float(self.model.predict(obs, batch_size=1, verbose=0)[0])
-            #print("DNN elasped time ",time.time() - time_start)
+            # print("DNN elasped time ",time.time() - time_start)
             steering = np.clip(steering, -1, 1)
             if speed > self.max_speed:
                 speed_limit = self.min_speed  # slow down
             else:
                 speed_limit = self.max_speed
 
-            #steering = self.change_steering(steering=steering)
-            #steering = float(self.model.predict(obs, batch_size=1, verbose=0))
+            # steering = self.change_steering(steering=steering)
+            # steering = float(self.model.predict(obs, batch_size=1, verbose=0))
 
             throttle = np.clip(a=1.0 - steering ** 2 - (speed / speed_limit) ** 2, a_min=0.0, a_max=1.0)
 
-            #print(f"steering {steering} throttle {throttle}")
-            #self.model.summary()
+            # print(f"steering {steering} throttle {throttle}")
+            # self.model.summary()
 
         return UdacityAction(steering_angle=steering, throttle=throttle)
