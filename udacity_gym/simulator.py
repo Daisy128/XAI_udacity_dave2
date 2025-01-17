@@ -74,7 +74,7 @@ class UdacitySimulator:
     #     self.sim_state['track'] = track_name
 
     def reset(self, new_track_name: str = 'lake', new_weather_name: str = 'sunny', new_daytime_name: str = 'day'):
-        print("-----------Do reset-----------")
+        # print("-----------Do reset-----------")
         observation = UdacityObservation(
             input_image=None,
             semantic_segmentation=None,

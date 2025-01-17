@@ -88,7 +88,7 @@ from .operators.NeuralStyleTransfer.NeuralStyleTransfer import NeuralStyleTransf
 from .operators.SaliencyMap.GradCam import gradCam
 from .operators.Generative.Sim2RealGen import Sim2RealGen
 from .operators.Generative.TrainCycleGan import train_cycle_gan
-from .perturbationdrive import PerturbationDrive
+from .perturbationdrive_new import PerturbationDrive
 
 # imports related to all abstract concept
 from .operators.AutomatedDrivingSystem.ADS import ADS

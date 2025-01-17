@@ -20,8 +20,9 @@ from .utils.utilFuncs import (
 def factors_append(factors: List=None, scale: int = 5):
 
     addition_count = scale - len(factors) + 1
-    new_factors = [2 * factors[-1] - factors[-2] for _ in range(addition_count)]
-    factors.extend(new_factors)
+    for _ in range(addition_count):
+        new_factor = 2 * factors[-1] - factors[-2]
+        factors.append(new_factor)
 
     return factors[scale]
 
@@ -317,7 +318,7 @@ def jpeg_filter(scale, image):
 
     Returns: numpy array:
     """
-    factors = [30, 18, 15, 10, 5]
+    factors = [30, 20, 10, 0, -10]
     if scale < len(factors):
         factor = factors[scale]
     else:
@@ -405,7 +406,8 @@ def scale_image(scale, image):
 
     Returns: numpy array:
     """
-    factors = [0.96, 0.9, 0.8, 0.68, 0.5]
+    # factors = [0.96, 0.9, 0.8, 0.68, 0.5]
+    factors = [0.96, 0.9, 0.8, 0.7, 0.6]
     if scale < len(factors):
         factor = factors[scale]
     else:
@@ -452,7 +454,7 @@ def rotate_image(scale, image):
 
     Returns: numpy array:
     """
-    angles = [10, 20, 45, 90, 180]
+    angles = [10, 12, 15, 17, 20]
     if scale < len(angles):
         angle = angles[scale]
     else:
@@ -479,8 +481,8 @@ def fog_mapping(scale, image):
 
     Returns: numpy array:
     """
-    severity_level = [0.05, 0.12, 0.22, 0.35, 0.40]
-    # severity_level = [0.45, 0.50, 0.55, 0.60, 0.65]
+    # severity_level = [0.05, 0.12, 0.22, 0.35, 0.40]
+    severity_level = [0.45, 0.50, 0.55, 0.60, 0.65] # track1
     if scale < len(severity_level):
         severity = severity_level[scale]
     else:
@@ -747,7 +749,8 @@ def high_pass_filter(scale, image):
     Returns: numpy array:
     """
     # kernel_level = [291] # fitted value for track1
-    kernel_level = [35, 59, 83, 107, 113]
+    # kernel_level = [35, 59, 83, 107, 113]
+    kernel_level = [35, 83, 151, 291, 379, 457]
     if scale < len(kernel_level):
         kernel_size = kernel_level[scale]
     else:
@@ -774,7 +777,7 @@ def low_pass_filter(scale, image):
 
     Returns: numpy array:
     """
-    kernel_level = [15, 23, 30, 36, 40]
+    kernel_level = [15, 23, 30, 36, 50]
     if scale < len(kernel_level):
         kernel_size = kernel_level[scale]
     else:

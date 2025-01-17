@@ -5,7 +5,6 @@ from perturbationdrive.operators.AutomatedDrivingSystem.ADS import ADS
 from perturbationdrive.imageperturbations import ImagePerturbation
 from perturbationdrive.Simulator.Scenario import Scenario
 from perturbationdrive.RoadGenerator.RoadGenerator import RoadGenerator
-from perturbationdrive.utils.image_log import *
 
 from typing import List, Union, Dict, Tuple
 import os, copy, time
@@ -128,7 +127,7 @@ class PerturbationDrive:
                     if not os.path.exists(image_folder):
                         os.makedirs(image_folder)
                     with ThreadPoolExecutor(max_workers=4) as executor:
-                        futures = [executor.submit(save_image, image_path, image) for image_path, image in temporary_images]
+                        futures = [executor.submit(self.save_image, image_path, image) for image_path, image in temporary_images]
                     # 等待所有任务完成
                     for future in futures:
                         try:
@@ -136,7 +135,7 @@ class PerturbationDrive:
                         except Exception as e:
                             print(f"Error during image saving: {e}")
 
-                    perturb_driving_log(os.path.join(LOG_PATH, LOG_NAME), data)
+                    self.perturb_driving_log(os.path.join(LOG_PATH, LOG_NAME), data)
                     print(f"Data saved under {LOG_NAME}!")
 
                 else:

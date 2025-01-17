@@ -67,12 +67,13 @@ model_cfgs['num_outputs'] = 2 # when we wish to predict steering and throttle:
 
 perturb_cfgs = dict()
 perturb_cfgs['visualize'] = True
-perturb_cfgs['scale'] = 6 # auto-iterate scale from 0 to 6
+perturb_cfgs['max_scale'] = 10
 perturb_cfgs['image_height'] = 160
 perturb_cfgs['image_width'] = 320
 perturb_cfgs['low_speed_threshold'] = 0.01
 perturb_cfgs['low_speed_limit'] = 20
 perturb_cfgs['total_crash_limit'] = {"lake": (3,6), "mountain": (3, 8)}
+perturb_cfgs['log_dir'] = "perturbationdrive/logs"
 
 mutate_cfgs = dict()
 mutate_cfgs['image_height'] = 160
