@@ -852,7 +852,8 @@ def histogram_equalisation(scale, image):
 
     Returns: numpy array:
     """
-    clip_limit_level = [1, 3, 5, 7, 10]
+    # clip_limit_level = [1, 3, 5, 7, 10]
+    clip_limit_level = [1, 5, 10, 15, 20]
     if scale < len(clip_limit_level):
         clip_limit = clip_limit_level[scale]
     else:
@@ -872,6 +873,9 @@ def histogram_equalisation(scale, image):
 
     # Convert back to RGB color space
     equalised_rgb = cv2.cvtColor(equalised_hsv, cv2.COLOR_HSV2RGB)
+
+    # Ensure the output is uint8
+    equalised_rgb = np.clip(equalised_rgb, 0, 255).astype(np.uint8)
 
     return equalised_rgb
 
@@ -920,8 +924,8 @@ def white_balance_filter(scale, image):
 
     Returns: numpy array:
     """
-    severity_level = [0.1, 0.25, 0.5, 0.75, 0.99]
-    # severity_level = [1, 2, 3, 4, 5] # track1
+    severity_level = [0.1, 0.25, 0.5, 0.75, 0.99] # track1
+    # severity_level = [1, 2, 3, 4, 5]
     if scale < len(severity_level):
         severity = severity_level[scale]
     else:
@@ -969,7 +973,7 @@ def grayscale_filter(scale, image):
     Returns: numpy array:
     """
 
-    severity_level = [0.1, 0.2, 0.35, 0.55, 0.85]
+    severity_level = [0.1, 0.2, 0.35, 0.55, 0.75]
     # severity_level = [1, 2, 3, 4, 5] # track1
     if scale < len(severity_level):
         severity = severity_level[scale]
@@ -1150,7 +1154,7 @@ def saturation_decrease_filter(scale, image):
     Returns: numpy array:
     """
 
-    multiplier_level = [0.9, 0.85, 0.6, 0.35, 0.1]
+    multiplier_level = [0.9, 0.85, 0.6, 0.35, 0.1,0.05]
     if scale < len(multiplier_level):
         multiplier = multiplier_level[scale]
     else:
@@ -1181,6 +1185,7 @@ def fog_filter(scale, image):
         (0.2, 0.1),
         (0.3, 0.2),
         (0.45, 0.3),
+        (0.55, 0.4),
         (0.65, 0.45),
     ]
 
@@ -1219,7 +1224,7 @@ def frost_filter(scale, image):
     else:
         intensity = factors_append(intensity_level, scale)
 
-    frost_image_path = "./perturbationdrive/OverlayImages/frostImg.png"
+    frost_image_path = "./perturbationdrive/operators/OverlayImages/frostImg.png"
     # Load the frost overlay image
     frost_overlay = cv2.imread(frost_image_path, cv2.IMREAD_UNCHANGED)
     assert (
@@ -1257,7 +1262,7 @@ def snow_filter(scale, image):
         intensity = intensity_level[scale]
     else:
         intensity = factors_append(intensity_level, scale)
-    frost_image_path = "./perturbationdrive/OverlayImages/snow.png"
+    frost_image_path = "./perturbationdrive/operators/OverlayImages/snow.png"
     # Load the frost overlay image
     frost_overlay = cv2.imread(frost_image_path, cv2.IMREAD_UNCHANGED)
     assert (
@@ -1291,7 +1296,7 @@ def dynamic_snow_filter(scale, image, iterator):
 
     Returns: numpy array:
     """
-    intensity_level = [0.15, 0.25, 0.4, 0.6, 0.85]
+    intensity_level = [0.15, 0.25, 0.4, 0.6, 0.85, 0.95, 1.0]
     if scale < len(intensity_level):
         intensity = intensity_level[scale]
     else:
@@ -1357,7 +1362,7 @@ def dynamic_rain_filter(scale, image, iterator):
 
     Returns: numpy array:
     """
-    intensity_level = [0.15, 0.25, 0.4, 0.6, 0.85]
+    intensity_level = [0.15, 0.25, 0.4, 0.6, 0.85, 0.95, 1.0]
     if scale < len(intensity_level):
         intensity = intensity_level[scale]
     else:
@@ -1391,7 +1396,7 @@ def dynamic_raindrop_filter(scale, image, iterator):
 
     Returns: numpy array:
     """
-    intensity_level = [0.15, 0.25, 0.4, 0.6, 0.85]
+    intensity_level = [0.15, 0.25, 0.4, 0.6, 0.85, 0.95, 1.0]
     if scale < len(intensity_level):
         intensity = intensity_level[scale]
     else:
@@ -1453,7 +1458,7 @@ def static_rain_filter(scale, image, rain_overlay):
 
 def object_overlay(scale, img1):
     c = [10, 5, 3, 2, 1.5]
-    overlay_path = "./perturbationdrive/OverlayImages/Logo_of_the_Technical_University_of_Munichpng.png"
+    overlay_path = "./perturbationdrive/operators/OverlayImages/Logo_of_the_Technical_University_of_Munichpng.png"
     img2 = cv2.imread(overlay_path)
     assert img2 is not None, "file could not be read, check with os.path.exists()"
     img1_shape0_div_c_scale = int(img1.shape[0] / c[scale])
@@ -1582,7 +1587,7 @@ def dynamic_sun_filter(scale, image, iterator):
 
     Returns: numpy array:
     """
-    intensity_level = [0.15, 0.25, 0.4, 0.6, 0.85]
+    intensity_level = [0.15, 0.25, 0.4, 0.6, 0.85, 0.95, 1.0]
     if scale < len(intensity_level):
         intensity = intensity_level[scale]
     else:
@@ -1757,7 +1762,7 @@ def static_smoke_filter(scale, image, rain_overlay):
     Returns: numpy array:
     """
     intensity_level = [0.15, 0.25, 0.4, 0.6, 0.85]
-    # intensity_level = [1, 2, 3, 4, 5] # track1
+    # intensity_level = [1, 2, 3, 4, 5]
     if scale < len(intensity_level):
         intensity = intensity_level[scale]
     else:

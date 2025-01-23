@@ -31,25 +31,25 @@ class PerturbationSimulator(ABC):
         """
         pass
 
-    @abstractmethod
-    def simulate_scanario(
-        self, agent: ADS, scenario: Scenario, perturbation_controller: ImagePerturbation
-    ) -> ScenarioOutcome:
-        """
-        Simulates the given list of scenarions.
-        This method needs to handle the different formats of the waypoints of a scenario (e.g. angles, points or none).
-        If the images should be displayed or saves, this is the method to use.
-
-        For all given scenarios the following steps are repreated
-        - Resets the simulator
-        - Builds the scenarion (in terms of waypoints)
-        - Runs an action loop
-            - Get the observation from the simulator
-            - Perturb the observation given a method by the perturbation controller
-            - Feed the perturbed observation into the ADS
-            - Perform the actions of the ADS
-        """
-        pass
+    # @abstractmethod
+    # def simulate_scanario(
+    #     self, agent: ADS, scenario: Scenario, perturbation_controller: ImagePerturbation
+    # ) -> ScenarioOutcome:
+    #     """
+    #     Simulates the given list of scenarions.
+    #     This method needs to handle the different formats of the waypoints of a scenario (e.g. angles, points or none).
+    #     If the images should be displayed or saves, this is the method to use.
+    #
+    #     For all given scenarios the following steps are repreated
+    #     - Resets the simulator
+    #     - Builds the scenarion (in terms of waypoints)
+    #     - Runs an action loop
+    #         - Get the observation from the simulator
+    #         - Perturb the observation given a method by the perturbation controller
+    #         - Feed the perturbed observation into the ADS
+    #         - Perform the actions of the ADS
+    #     """
+    #     pass
 
     @abstractmethod
     def tear_down(self):

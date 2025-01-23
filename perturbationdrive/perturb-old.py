@@ -141,7 +141,7 @@ def perturbed_simulate(config):
                     skip_frames -= 1
 
                 # 道路内主观停止算作error type: 速度过低
-                if obs.speed <= LOW_SPEED_THRESHOLD and reward <= 4:
+                if obs.speed <= LOW_SPEED_THRESHOLD and reward <= 2:
                     low_speed_count += 1
                 else:
                     low_speed_count = 0
@@ -152,7 +152,7 @@ def perturbed_simulate(config):
                     keep_running = False
 
                 # Simulator未检测出的crash
-                if frame > 1 and abs(reward - prev_cte) > 4 and crash["is_crashed"] != True and prev_is_crashed != True:
+                if frame > 1 and abs(reward - prev_cte) > 2 and crash["is_crashed"] != True and prev_is_crashed != True:
                     print("Manual Crash detected!")
                     manual_crash += 1
                     crash["is_crashed"] = True
@@ -212,7 +212,7 @@ def perturbed_simulate(config):
 
                 break  # jump out of current perturbation
 
-            else:  #total_crash > TOTAL_CRASH_LIMIT[1]:
+            else:  # total_crash > TOTAL_CRASH_LIMIT[1]:
                 if scale == 0:
                     print("the lightest level of perturbation is already too much!")
                     break

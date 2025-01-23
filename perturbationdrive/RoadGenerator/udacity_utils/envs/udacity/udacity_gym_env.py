@@ -8,10 +8,10 @@ import gym
 import numpy as np
 from gym import spaces
 
-from examples.udacity.udacity_utils.envs.udacity.config import BASE_PORT, MAX_STEERING, INPUT_DIM
-from examples.udacity.udacity_utils.envs.udacity.core.udacity_sim import UdacitySimController
-from examples.udacity.udacity_utils.envs.unity_proc import UnityProcess
-from examples.udacity.udacity_utils.global_log import GlobalLog
+from perturbationdrive.RoadGenerator.udacity_utils.envs.udacity.config import BASE_PORT, MAX_STEERING, INPUT_DIM
+from perturbationdrive.RoadGenerator.udacity_utils.envs.udacity.core.udacity_sim import UdacitySimController
+from perturbationdrive.RoadGenerator.udacity_utils.envs.unity_proc import UnityProcess
+from perturbationdrive.RoadGenerator.udacity_utils.global_log import GlobalLog
 
 
 class UdacityGymEnv_RoadGen(gym.Env):

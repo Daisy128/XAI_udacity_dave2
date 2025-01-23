@@ -41,134 +41,10 @@ class CSVLogHandler(logging.FileHandler):
             self.flush()
             self.current_row = []
 
-
-class ScenarioOutcomeWriter:
-    def __init__(self, file_path: str, overwrite_logs: bool = True):
-        """
-        Write scenario outcomes to a json file
-
-        :param file_path: path to the json file
-        :param overwrite_logs: whether to overwrite the existing logs
-        """
-        self._write = True
-        if os.path.exists(file_path) and os.path.isfile(file_path):
-            print(
-                f"{ 5* '+'} Warning Scenario Writer: The log file path already exists {5 * '+'}"
-            )
-            if not overwrite_logs:
-                print(
-                    f"{5 * '+'} Warning Scenario Writer: No logs will be saved, due to overwrite_logs=false {5 * '+'}"
-                )
-                self._write = False
-        self.file_path = file_path
-
-    def write(self, scenario_outcomes: List[ScenarioOutcome],images=False):
-        """
-        Write scenario outcomes to a json file
-
-        :param scenario_outcomes: list of scenario outcomes
-        """
-        if len(scenario_outcomes) == 0:
-            print(f"{ 5* '+'} Error Scenario Writer: The scenario is empty {5 * '+'}")
-            return
-        if self._write:
-            # Read existing data
-            if os.path.exists(self.file_path):
-                with open(self.file_path, "r") as file:
-                    try:
-                        data = json.load(file)
-                    except json.JSONDecodeError:
-                        data = []
-            else:
-                data = []
-            # Append new data
-            for scenario_outcome in scenario_outcomes:
-                image_folder_name=self.file_path.split("logs_")[0]+"_"+str(scenario_outcome.scenario.perturbation_function)+"_"+str(scenario_outcome.scenario.perturbation_scale)
-                scenario_data=asdict(scenario_outcome)
-                perturbed_images = scenario_data.pop('perturbed_images', None)
-                original_images = scenario_data.pop('original_images', None)
-                if images:
-                    image_frames=scenario_outcome.frames
-                    if len(perturbed_images)>0:
-                        if not os.path.exists(image_folder_name+"_perturbed"):
-                            os.makedirs(image_folder_name+"_perturbed")
-                        for i, img_array in enumerate(perturbed_images):
-                            image_data_int = np.rint(img_array).astype(np.uint8)
-                            # print(image_data_int)
-                            img = Image.fromarray(image_data_int)
-                            frame=image_frames[i]
-                            img.save(os.path.join(image_folder_name+f"_perturbed/{frame}.jpg"))
-                    else:
-                        if not os.path.exists(image_folder_name+"_original"):
-                            os.makedirs(image_folder_name+"_original")
-                        for i, img_array in enumerate(original_images):
-                            img = Image.fromarray(img_array)
-                            frame=image_frames[i]
-                            img.save(os.path.join(image_folder_name+f"_original/{frame}.jpg"))
-                # print(perturbed_images)
-                data.append(scenario_data)
-                gc.collect()
-            # Write updated data back to file
-            # print(data)
-            with open(self.file_path, "w") as file:
-                json.dump(data, file, cls=NumpyEncoder, indent=4)
-
-
-class OfflineScenarioOutcomeWriter:
-    def __init__(self, file_path: str, overwrite_logs: bool = True):
-        """
-        Write offline scenario outcomes to a json file
-
-        :param file_path: path to the json file
-        :param overwrite_logs: whether to overwrite the existing logs
-        """
-        self._write = True
-        if os.path.exists(file_path) and os.path.isfile(file_path):
-            print(
-                f"{ 5* '+'} Warning Offline Scenario Writer: The log file path already exists {5 * '+'}"
-            )
-            if not overwrite_logs:
-                print(
-                    f"{5 * '+'} Warning Offline Scenario Writer: No logs will be saved, due to overwrite_logs=false {5 * '+'}"
-                )
-                self._write = False
-        self.file_path = file_path
-
-    def write(self, scenario_outcomes: List[OfflineScenarioOutcome]):
-        """
-        Write offline scenario outcomes to a json file
-
-        :param scenario_outcomes: list of offline scenario outcomes
-        """
-        if len(scenario_outcomes) == 0:
-            print(
-                f"{ 5* '+'} Error Offline Scenario Writer: The scenario is empty {5 * '+'}"
-            )
-            return
-        if self._write:
-            # Read existing data
-            if os.path.exists(self.file_path):
-                with open(self.file_path, "r") as file:
-                    try:
-                        data = json.load(file)
-                    except json.JSONDecodeError:
-                        data = []
-            else:
-                data = []
-
-            # Append new data
-            for scenario_outcome in scenario_outcomes:
-                data.append(asdict(scenario_outcome))
-
-            # Write updated data back to file
-            with open(self.file_path, "w") as file:
-                json.dump(data, file, indent=4)
-
-
 class GlobalLog:
-    """This class is used to log acress different modeles in the project"""
+    """This class is used to log across different models in the project"""
 
-    def __init__(self, logger_prefix: str):
+    def __init__(self, logger_prefix: str, log_file: str=None):
         """
         We use the logger_prefix to distinguish between different loggers
 
@@ -185,6 +61,12 @@ class GlobalLog:
             ch.setFormatter(formatter)
             ch.setLevel(level=logging.DEBUG)
             self.logger.addHandler(ch)
+
+            if log_file:
+                fh = logging.FileHandler(log_file)
+                fh.setFormatter(formatter)
+                fh.setLevel(level=LOGGING_LEVEL)
+                self.logger.addHandler(fh)
 
     def debug(self, message):
         """Log debug message"""

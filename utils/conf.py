@@ -15,7 +15,7 @@ DEFAULT_DEVICE = f'cuda:{DEVICE}' if ACCELERATOR == 'gpu' else 'cpu'
 
 # Simulator settings
 simulator_infos = defaultdict(dict)
-simulator_infos[1]['exe_path'] = PROJECT_DIR.joinpath("simulator", "build_angle_diff" ,"udacity.x86_64")
+simulator_infos[1]['exe_path'] = PROJECT_DIR.joinpath("simulator", "udacity_tracks_simulator" ,"udacity.x86_64")
 simulator_infos[1]['host'] = "127.0.0.1"
 simulator_infos[1]['port'] = 4567
 
@@ -64,16 +64,6 @@ model_cfgs['resized_image_width'] = 160
 model_cfgs['resized_image_height'] = 80
 
 model_cfgs['num_outputs'] = 2 # when we wish to predict steering and throttle:
-
-perturb_cfgs = dict()
-perturb_cfgs['visualize'] = True
-perturb_cfgs['max_scale'] = 10
-perturb_cfgs['image_height'] = 160
-perturb_cfgs['image_width'] = 320
-perturb_cfgs['low_speed_threshold'] = 0.01
-perturb_cfgs['low_speed_limit'] = 20
-perturb_cfgs['total_crash_limit'] = {"lake": (3,6), "mountain": (3, 8)}
-perturb_cfgs['log_dir'] = "perturbationdrive/logs"
 
 mutate_cfgs = dict()
 mutate_cfgs['image_height'] = 160

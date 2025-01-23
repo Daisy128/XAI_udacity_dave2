@@ -65,13 +65,7 @@ from perturbationdrive.perturbationfuncs import (
 )
 
 from .utils.data_utils import CircularBuffer
-from .utils.logger import (
-    CSVLogHandler,
-    GlobalLog,
-    LOGGING_LEVEL,
-    ScenarioOutcomeWriter,
-    OfflineScenarioOutcomeWriter,
-)
+from .utils.logger import GlobalLog
 from .utils.utilFuncs import download_file, calculate_velocities
 from .operators.SaliencyMap.saliencymap import (
     getActivationMap,
@@ -88,7 +82,7 @@ from .operators.NeuralStyleTransfer.NeuralStyleTransfer import NeuralStyleTransf
 from .operators.SaliencyMap.GradCam import gradCam
 from .operators.Generative.Sim2RealGen import Sim2RealGen
 from .operators.Generative.TrainCycleGan import train_cycle_gan
-from .perturbationdrive_new import PerturbationDrive
+from .perturbationdrive import PerturbationDrive
 
 # imports related to all abstract concept
 from .operators.AutomatedDrivingSystem.ADS import ADS
