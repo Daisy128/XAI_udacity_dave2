@@ -27,7 +27,7 @@ model_properties = {
 change_label = {
     "name": 'change_label',
     "change_label_udp": False,
-    "change_label_pct": -1, # as the added noise's parameter
+    "change_label_pct": mutate_cfgs["mutate_func_params"]["change_label_pct"], # as the added noise's parameter
     "change_label_label": None,
     "runs_number": 10,
     "annotation_params": ["y_train"],
@@ -242,7 +242,7 @@ remove_bias = {
 
 change_loss_function = {
     "name": 'change_loss_function',
-    "loss_function_udp": None,
+    "loss_function_udp": mutate_cfgs['mutate_func_params']['new_loss_function'], # only change of here enough
     "runs_number": 10,
     "annotation_params": [],
     "mutation_target": None,
@@ -256,7 +256,7 @@ change_dropout_rate = {
     "runs_number": 10,
     "dropout_rate_udp": False,
     "annotation_params": [],
-    "rate": 0,
+    "rate": mutate_cfgs['mutate_func_params']['dropout_rate'], # change only here enough for mutation
     "current_index": 0,
     "layer_mutation": True,
     "search_type": 'exhaustive'

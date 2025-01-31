@@ -99,7 +99,7 @@ def train_model(model, x_train, x_test, y_train, y_test, model_name, track_index
     track_info = track_infos[track_index]
     current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
     if mutate_cfgs['do_mutate']:
-        model_folder = os.path.join(mutate_cfgs['mutate_dir'], ((((mutate_cfgs['mutate_func'] + '_') + mutate_cfgs['mutate_func_params']['type']) + '_') + mutate_cfgs['mutate_func_params']['layer']))
+        model_folder = os.path.join(mutate_cfgs['mutate_dir'], ((((mutate_cfgs['mutate_func'] + '_') + mutate_cfgs['mutate_func_params']['type']) + '_') + "2_10"))
         default_prefix_name = f"track{track_index}-{model_name}-{mutate_cfgs['mutate_func']}"
     else:
         model_folder = Training_Configs['model_dir']

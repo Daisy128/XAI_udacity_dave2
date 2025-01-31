@@ -56,7 +56,7 @@ class GlobalLog:
             self.logger = logging.getLogger(logger_prefix)
             self.logger.setLevel(level=LOGGING_LEVEL)
 
-            formatter = logging.Formatter("%(levelname)s:%(name)s:%(message)s")
+            formatter = logging.Formatter("%(levelname)s: %(name)s: %(message)s")
             ch = logging.StreamHandler(sys.stdout)
             ch.setFormatter(formatter)
             ch.setLevel(level=logging.DEBUG)

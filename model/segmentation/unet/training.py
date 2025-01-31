@@ -27,7 +27,7 @@ class SegmentationDataset(Dataset):
 
     def __init__(self, dataset_dir: str, split: str = "train", csv_file='log.csv'):
         self.dataset_dir = pathlib.Path(PROJECT_DIR) /pathlib.Path(dataset_dir)
-        self.metadata = pd.read_csv(self.dataset_dir.joinpath(csv_file))
+        self.metadata = pd.read_csv(self.dataset_dir.parent.joinpath(csv_file))
         self.split = split
         if self.split == "train":
             self.metadata = self.metadata[10: int(len(self.metadata) * 0.9)]
@@ -49,8 +49,9 @@ class SegmentationDataset(Dataset):
         return len(self.metadata)
 
     def __getitem__(self, idx):
-        image = Image.open(self.dataset_dir.joinpath(self.metadata['image_filename'].values[idx]))
-        segmentation = Image.open(self.dataset_dir.joinpath( self.metadata['segmentation_filename'].values[idx]))
+        # image = Image.open(self.dataset_dir.joinpath(self.metadata['image_filename'].values[idx]))
+        image = Image.open(self.metadata['image_path'].values[idx])
+        segmentation = Image.open(self.metadata['image_path'].values[idx])
         segmentation = np.array(segmentation)
         # segmentation = segmentation[:,:,2:] == 255  # don't know why it works
         if self.split == "train":

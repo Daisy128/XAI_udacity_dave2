@@ -1,4 +1,7 @@
+import os
 import pathlib
+import shutil
+
 import lightning as pl
 import numpy as np
 import pandas as pd
@@ -13,10 +16,10 @@ import torchmetrics
 from model.segmentation.unet.training import SegmentationDataset
 # from model.lane_keeping.dave_torch.dave_model import Dave2
 from model.segmentation.unet.unet_model import SegmentationUnet
-from utils.conf import ACCELERATOR, DEVICE, DEFAULT_DEVICE, CHECKPOINT_DIR
+from utils.conf import ACCELERATOR, DEVICE, DEFAULT_DEVICE, PROJECT_DIR
 
 
-def test_set_evaluation(track, weather, model_name, csv_filename):
+def test_set_evaluation(track, weather, model_name, image_dir, csv_filename):
     pl.seed_everything(42)
     torch.set_float32_matmul_precision('high')
 
@@ -26,7 +29,7 @@ def test_set_evaluation(track, weather, model_name, csv_filename):
     # accelerator = ACCELERATOR
     # devices = [DEVICE]
 
-    checkpoint_name = CHECKPOINT_DIR.joinpath("segmentation", f"unet_{track}_{weather}", model_name)
+    checkpoint_name = PROJECT_DIR.joinpath("model/segmentation", f"unet_{track}_{weather}", model_name)
 
     miou_metric = torchmetrics.classification.BinaryJaccardIndex().to(DEFAULT_DEVICE)
     prc_metric = torchmetrics.classification.BinaryPrecision().to(DEFAULT_DEVICE)
@@ -47,7 +50,7 @@ def test_set_evaluation(track, weather, model_name, csv_filename):
 
     driving_model = SegmentationUnet.load_from_checkpoint(checkpoint_name, map_location=DEFAULT_DEVICE)
 
-    dataset = SegmentationDataset(dataset_dir="Data/collected_seg_data/", split="test", csv_file=csv_filename)
+    dataset = SegmentationDataset(dataset_dir=image_dir, csv_file=csv_filename)
 
     loader = DataLoader(
         dataset,
@@ -94,8 +97,7 @@ def test_set_evaluation(track, weather, model_name, csv_filename):
     print(f"FP computed on dataset {track}-{weather}: {np.array(metric_values['FP']).mean()}")
 
 
-
-def all_set_evaluation_and_save(track, weather, model_name, csv_filename):
+def all_set_evaluation_and_save(track, weather, model_name, image_dir, csv_filename):
     pl.seed_everything(42)
     torch.set_float32_matmul_precision('high')
 
@@ -105,10 +107,10 @@ def all_set_evaluation_and_save(track, weather, model_name, csv_filename):
     # accelerator = ACCELERATOR
     # devices = [DEVICE]
 
-    checkpoint_name = CHECKPOINT_DIR.joinpath("segmentation", f"unet_{track}_{weather}", model_name)
+    checkpoint_name = PROJECT_DIR.joinpath("model/segmentation", f"unet_{track}_{weather}", model_name)
     driving_model = SegmentationUnet.load_from_checkpoint(checkpoint_name, map_location=DEFAULT_DEVICE)
 
-    dataset = SegmentationDataset(dataset_dir="Data/collected_seg_data/", split="all", csv_file=csv_filename)
+    dataset = SegmentationDataset(dataset_dir=image_dir, split="all", csv_file=csv_filename)
 
     loader = DataLoader(
         dataset,
@@ -118,6 +120,9 @@ def all_set_evaluation_and_save(track, weather, model_name, csv_filename):
     )
     i = 0
     stored_segmentation_dir = dataset.dataset_dir.joinpath(f"computed_segmentation_{track}_{weather}")
+    # if os.path.exists(stored_segmentation_dir):
+    #     print("folder".format(stored_segmentation_dir), "already exists, overwriting it.")
+    #     shutil.rmtree(stored_segmentation_dir)
     stored_segmentation_dir.mkdir(parents=True, exist_ok=True)
 
     with torch.no_grad():
@@ -127,23 +132,37 @@ def all_set_evaluation_and_save(track, weather, model_name, csv_filename):
             img = img.to(DEFAULT_DEVICE)
             pred = driving_model(img)
             for img in pred:
-                stored_segmentation_name = dataset.metadata['segmentation_filename'].values[i]
+                stored_segmentation_name = dataset.metadata['image_path'].values[i]
                 stored_segmentation_name = "computed_" + stored_segmentation_name.split('/')[-1]
                 torchvision.utils.save_image(img, stored_segmentation_dir.joinpath(stored_segmentation_name))
                 i = i + 1
 
 
 if __name__ == '__main__':
-    track = "lake"
-    weather = "sun"
-    csv_filename = 'lake_sun_training.csv'
-    model_name = "segmentation_unet_epoch=56_step=741_val_mIoU=0.9820912480354309_val_loss=0.02768610045313835.ckpt"
-    #test_set_evaluation(track, weather, model_name, csv_filename)
-    all_set_evaluation_and_save(track, weather, model_name, csv_filename)
-
     track = "mountain"
     weather = "sun"
-    csv_filename = 'mountain_sun_training.csv'
-    model_name = "segmentation_unet_epoch=89_step=1980_val_mIoU=0.9733365774154663_val_loss=0.042826734483242035.ckpt"
+    if track == "lake":
+        model_name = "segmentation_unet_epoch=56_step=741_val_mIoU=0.9820912480354309_val_loss=0.02768610045313835.ckpt"
+    elif track == "mountain":
+        model_name = "segmentation_unet_epoch=89_step=1980_val_mIoU=0.9733365774154663_val_loss=0.042826734483242035.ckpt"
+    else:
+        model_name = None
     #test_set_evaluation(track, weather, model_name, csv_filename)
-    all_set_evaluation_and_save(track, weather, model_name, csv_filename)
+    root_folder = f"perturbationdrive/logs/{track}"
+
+    for folder_name in os.listdir(root_folder):
+        print("Running Segmentation on folder: ", folder_name)
+
+        folder_path = os.path.join(root_folder, folder_name)
+        if os.path.isdir(folder_path) and model_name is not None:
+            image_dir = os.path.join(folder_path, "image_logs/")
+            csv_filename = f"{folder_name}.csv"
+            all_set_evaluation_and_save(track, weather, model_name, image_dir, csv_filename)
+
+    # track = "mountain"
+    # weather = "sun"
+    # csv_filename = 'mountain_sun_training.csv'
+    # image_dir = "perturbationdrive/logs/lake/lake_cutout_filter_scale8_log/image_logs/"
+    # model_name = "segmentation_unet_epoch=89_step=1980_val_mIoU=0.9733365774154663_val_loss=0.042826734483242035.ckpt"
+    # #test_set_evaluation(track, weather, model_name, csv_filename)
+    # all_set_evaluation_and_save(track, weather, model_name, image_dir, csv_filename)

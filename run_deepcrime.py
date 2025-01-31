@@ -14,7 +14,7 @@ if __name__ == '__main__':
 
     data['subject_name'] = 'dave2'
     data['subject_path'] = os.path.join('self_driving_car_train_tf.py')
-    data['mutations'] = ["change_activation_function"]
+    data['mutations'] = ["change_loss_function"]
 
     run_deepcrime_tool(data)
 

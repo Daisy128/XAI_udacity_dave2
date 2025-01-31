@@ -57,6 +57,7 @@ def run_perturb_road_generator(roadgen_config, config, perturb_cfgs):
             start_scale=config['start_scale'],
             visualize=perturb_cfgs['visualize'],
             perturb=roadgen_config['perturb'],
+            logger=logger,
         )
 
         for i in range(10, len(road_angles_list)):
@@ -101,6 +102,7 @@ def run_perturb_udacity_tracks(track_config, config, perturb_cfgs):
         max_scale=perturb_cfgs['max_scale'],
         start_scale=config['start_scale'],
         visualize=perturb_cfgs['visualize'],
+        logger=logger,
     )
 
     benchmarking_obj.perturb_tracks(

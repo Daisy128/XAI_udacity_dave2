@@ -9,7 +9,7 @@ from keras.losses import Loss as KLSS
 def operator_change_loss_function(old_loss):
     if props.change_loss_function["loss_function_udp"] is not None:
         new_loss_func = props.change_loss_function["loss_function_udp"]
-
+        print("loss function has been changd to: ", new_loss_func)
     elif props.change_loss_function["mutation_target"] is None:
         loss_functions = copy(const.keras_losses)
 

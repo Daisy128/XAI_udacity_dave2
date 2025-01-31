@@ -17,34 +17,37 @@ def operator_change_activation_function(model):
     if not model:
         print("raise,log we have problems")
 
-    current_index = props.change_activation_function["current_index"]
+    # current_index = props.change_activation_function["current_index"]
 
     tmp = model.get_config()
-
     functions = copy.copy(const.activation_functions)
+    # print("=====================")
+    # print(tmp)
+    # print("==================================")
+    print("Length of tmp is: ", len(tmp['layers']))
+    # print("Changing AF of layer" + str(current_index))
+    # for current_index in range(len(tmp['layers'])): # change the first 4 layers which has activation, actually layer 2 and layer 4
+    for current_index in range(11): # change the first 4 layers which has activation, actually layer 2 and layer 4
+        print(f"Layer {current_index}: {tmp['layers'][current_index]['config']}")
+        if tmp['layers'][current_index]['config'].get('activation') and tmp['layers'][current_index]['config']['activation'] != "linear":
+            if props.change_activation_function["activation_function_udp"] is not None:
+                new_act_func = props.change_activation_function["activation_function_udp"]
+            elif props.change_activation_function["mutation_target"] is None:
+                old_act_func = tmp['layers'][current_index]['config']['activation']
+                if old_act_func in functions:
+                    functions.remove(old_act_func)
+                new_act_func = random.choice(functions)
+                props.change_activation_function["mutation_target"] = new_act_func
+            else:
+                new_act_func = props.change_activation_function["mutation_target"]
 
-
-    print("Changing AF of layer" + str(current_index))
-    if tmp['layers'][current_index]['config'].get('activation'):# and tmp['layers'][current_index]['config']['activation'] != "linear"
-        if props.change_activation_function["activation_function_udp"] is not None:
-            new_act_func = props.change_activation_function["activation_function_udp"]
-        elif props.change_activation_function["mutation_target"] is None:
-            old_act_func = tmp['layers'][current_index]['config']['activation']
-            if old_act_func in functions:
-                functions.remove(old_act_func)
-            new_act_func = random.choice(functions)
-            props.change_activation_function["mutation_target"] = new_act_func
-        else:
-            new_act_func = props.change_activation_function["mutation_target"]
-
-        print("____________________________________")
-        print("Current Index: "+ str(current_index))
-        print("New Act Function:" + new_act_func)
-
-        tmp['layers'][current_index]['config']['activation'] = new_act_func
-    else:
-        raise Exception(str(current_index),
-                                   "Not possible to apply the add activation function mutation to layer ")
+            print("____________________________________")
+            print("Current Index: "+ str(current_index))
+            print("New Act Function:" + new_act_func)
+            tmp['layers'][current_index]['config']['activation'] = new_act_func
+        # else:
+        #     raise Exception(str(current_index),
+        #                                "Not possible to apply the add activation function mutation to layer ")
 
     model = mu.model_from_config(model, tmp)
 

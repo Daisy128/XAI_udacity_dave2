@@ -43,7 +43,7 @@ Training_Configs['AUG']['RANDOM_BRIGHTNESS'] = True
 # Track settings
 track_infos = defaultdict(dict)
 track_infos[1]['track_name'] = 'lake'
-track_infos[1]['model_name'] = 'track1-dave2-168.h5'
+track_infos[1]['model_name'] = 'track1-steer-throttle.h5'
 track_infos[1]['model_path'] = CHECKPOINT_DIR.joinpath(Training_Configs['model_dir'], track_infos[1]['model_name'])
 track_infos[1]['simulator'] = simulator_infos[1]
 track_infos[1]['driving_style'] = ["normal_lowspeed", "reverse_lowspeed","normal_lowspeed", "reverse_lowspeed"]
@@ -72,8 +72,8 @@ mutate_cfgs['do_mutate'] = True
 # mutate_cfgs['mutate_func'] = "add_weights_regularisation"
 # mutate_cfgs['mutate_func_params'] = {"type": "l1_l2", "layer": "6"}
 mutate_cfgs['mutate_dir'] = "ads-mutation"
-mutate_cfgs['mutate_func'] = "change_activation_function"
-mutate_cfgs['mutate_func_params'] = {"type": "exponential", "layer": "6"}
+mutate_cfgs['mutate_func'] = "change_loss_function"
+mutate_cfgs['mutate_func_params'] = {"type": "tanh", "layer": "6", "dropout_rate": "0.125", "change_label_pct": "10", "new_loss_function": "mean_absolute_error"}
 
 class Conf:
     def __init__(self):

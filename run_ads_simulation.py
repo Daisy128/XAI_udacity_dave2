@@ -49,7 +49,7 @@ if __name__ == '__main__':
     for _ in tqdm.tqdm(range(200)):
         action = agent(observation)
         last_observation = observation
-        observation, reward, terminated, truncated, info = env.step(action)
+        observation, reward, terminated, truncated, crash, info = env.step(action)
 
         while observation.time == last_observation.time:
             observation = env.observe()

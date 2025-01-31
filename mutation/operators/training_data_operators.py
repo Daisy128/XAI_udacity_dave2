@@ -5,7 +5,8 @@ from mutation.utils import properties
 
 def operator_change_labels(y_train, label=None, percentage=-1):
     if properties.model_type == 'regression':
-        y_train_noisy = operator_add_noise_to_labels(y_train, percentage)
+        print("For regression model changes label percentage to:", percentage)
+        y_train_noisy = operator_add_noise_to_labels(y_train, int(percentage))
         return y_train_noisy
     else:
         # get the unique elements of the array with index and count information

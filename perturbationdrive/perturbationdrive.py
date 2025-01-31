@@ -10,6 +10,7 @@ from PIL import Image
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Union, Dict, Tuple
 
+from perturbationdrive import GlobalLog
 from perturbationdrive.RoadGenerator.udacity_simulator import Waypoint_control_utils, WAYPOINT_THRESHOLD, \
     ANGLE_THRESHOLD
 from perturbationdrive.RoadGenerator.udacity_utils.envs.udacity.udacity_gym_env import UdacityGymEnv_RoadGen
@@ -41,7 +42,7 @@ class PerturbationDrive:
         start_scale: int = 0,
         visualize: bool = True,
         perturb: bool = True,
-        logger: logging.Logger = None,
+        logger: [GlobalLog, logging.Logger] = None,
     ):
         self.simulator = simulator
         self.agent = agent
@@ -380,8 +381,8 @@ class PerturbationDrive:
 
             while True:
                 print("---------------------------------------")
-                self.logger.info("Start perturbation: ", perturbation)
-                self.logger.info("Current scale of testing: ", scale)
+                self.logger.info(f"Start perturbation: {perturbation}")
+                self.logger.info(f"Current scale of testing: {scale}")
 
                 obs, _ = env.reset(track=track_name, weather=weather, daytime=daytime)
 
@@ -481,7 +482,7 @@ class PerturbationDrive:
                         obs = env.observe()
                         time.sleep(0.05)
 
-                self.logger.info("Total crash at this crash is: ", {total_crash})
+                self.logger.info(f"Total crash at this crash is: {total_crash})")
 
                 if monitor:
                     monitor.display_disconnect_screen()
@@ -495,10 +496,13 @@ class PerturbationDrive:
                 elif total_crash_limit[0] <= total_crash <= total_crash_limit[1]:
                     if not os.path.exists(image_folder):
                         os.makedirs(image_folder)
-                        self.logger.info("Folder created: ", image_folder)
+                        self.logger.info(f"Folder created: {image_folder}")
                     self.save_data_in_batch(log_name, log_path, data, temporary_images)
-                    self.logger.info("Out_of_track Count: ", crash.get("out_of_track"), "; Collision Count: ",
-                          crash.get("collision"), "Manual detected crash: ", manual_crash)
+                    self.logger.info(
+                        f"Out_of_track Count: {crash.get('out_of_track')}; "
+                        f"Collision Count: {crash.get('collision')}; "
+                        f"Manual detected crash: {manual_crash}"
+                    )
 
                     break  # jump out of current perturbation
 

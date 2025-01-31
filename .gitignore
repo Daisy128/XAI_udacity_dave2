@@ -10,3 +10,4 @@
 unitylog.txt
 /mutation/utils/logs
 /perturbationdrive/logs
+*.log
