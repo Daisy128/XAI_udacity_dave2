@@ -10,24 +10,46 @@ from tqdm import tqdm
 from utils import utils
 from utils.conf import *
 
-def score_increase(output):
-    return output[:, 0]
+def score_increase(output, focus="steering"):
+    if focus == "steering":
+        return output[:, 0]
+    elif focus == "throttle":
+        return output[:, 1]
+    elif focus == "both":
+        return 0.5 * output[:, 0] + 0.5 * output[:, 1]
+    else:
+        raise ValueError("Invalid mode. Choose 'steering', 'throttle', or 'both'")
 
-def score_decrease(output):
-    return -1.0 * output[:, 0]
+def score_decrease(output, focus="steering"):
+    if focus == "steering":
+        return -1.0 * output[:, 0]
+    elif focus == "throttle":
+        return -1.0 * output[:, 1]
+    elif focus == "both":
+        return -1.0 * (0.5 * output[:, 0] + 0.5 * output[:, 1])
+    else:
+        raise ValueError("Invalid mode. Choose 'steering', 'throttle', or 'both'")
 
-def score_maintain(output):
-    return tf.math.abs(1.0 / (output[:, 0] + tf.keras.backend.epsilon()))
+def score_maintain(output, focus="steering"):
+    if focus == "steering":
+        return tf.math.abs(1.0 / (output[:, 0] + tf.keras.backend.epsilon()))
+    elif focus == "throttle":
+        return tf.math.abs(1.0 / (output[:, 1] + tf.keras.backend.epsilon()))
+    elif focus == "both":
+        return tf.math.abs(1.0 / ((0.5 * output[:, 0] + 0.5 * output[:, 1]) + tf.keras.backend.epsilon()))
+    else:
+        raise ValueError("Invalid mode. Choose 'steering', 'throttle', or 'both'")
 
-def compute_heatmap(model, image_dir, csv_filename):
+
+def compute_heatmap(model, folder_path, csv_filename, focus):
     data_df = pd.read_csv(csv_filename)
     heatmap_df = pd.DataFrame()
     heatmap_df[["index", "is_crashed", "origin_image_path"]] = data_df[["index", "is_crashed", "image_path"]].copy()
 
     saliency = Saliency(model, model_modifier=None)
-    heatmap_dir = os.path.join(image_dir, "saliency_heatmap")
+    heatmap_dir = os.path.join(folder_path, f"saliency_heatmap_{focus}")
     os.makedirs(heatmap_dir, exist_ok=True)
-    overlay_dir = os.path.join(image_dir, "saliency_heatmap_overlay")
+    overlay_dir = os.path.join(folder_path, f"saliency_heatmap_overlay_{focus}")
     os.makedirs(overlay_dir, exist_ok=True)
 
     avg_heatmaps = []
@@ -40,7 +62,7 @@ def compute_heatmap(model, image_dir, csv_filename):
         x = np.asarray(Image.open(img))
         x = utils.resize(x).astype('float32')
         # print("image max value is: ", np.max(x)) # 231 ?
-        saliency_map = saliency(score_decrease, x, smooth_samples=20, smooth_noise=0.20)
+        saliency_map = saliency(lambda output:score_decrease(output, focus), x, smooth_samples=20, smooth_noise=0.20)
         gradient = abs(prev_hm - saliency_map) if idx != 1 else 0
 
         average = np.average(saliency_map)
@@ -55,7 +77,7 @@ def compute_heatmap(model, image_dir, csv_filename):
 
         list_of_image_paths.append(saliency_map_path)
 
-        saliency_map_colored = plt.cm.viridis(np.squeeze(saliency_map))[:, :, :3]
+        saliency_map_colored = plt.cm.jet(np.squeeze(saliency_map))[:, :, :3]
         saliency_map_colored = (saliency_map_colored * 255).astype(np.uint8)
         overlay = (x * 0.5 + saliency_map_colored * 0.5).astype(np.uint8)
         overlay_path = os.path.join(overlay_dir, f"overlay_{idx}.png")
@@ -84,14 +106,18 @@ def compute_heatmap(model, image_dir, csv_filename):
     heatmap_df.to_csv(os.path.join(heatmap_dir,'heatmap_log.csv'), index=True)
 
 if __name__ == '__main__':
+    # the only change-needed params
     track_index = 1 # lake, mountain or roadGenerator
+    focus = "steering" # steering, or throttle
 
-    model = load_model(track_infos[track_index]["model_path"])
+    # remain unchanged from:
+    model_name = load_model(track_infos[track_index]["model_path"])
+    root_folder = f"perturbationdrive/logs/{track_infos[track_index]['track_name']}"
 
-    root_dir = f"perturbationdrive/logs/{track_infos[track_index]['track_name']}"
-    image_folder_name = "lake_defocus_blur_scale6_log"
-    image_dir = os.path.join(root_dir,image_folder_name)
+    for folder_name in os.listdir(root_folder):
+        print("Generating attention map on folder: ", folder_name)
 
-    csv_filename = os.path.join(image_dir, f"{image_folder_name}.csv")
-
-    compute_heatmap(model, image_dir, csv_filename)
+        folder_path = os.path.join(root_folder, folder_name)
+        if os.path.isdir(folder_path) and model_name is not None:
+            csv_filename = os.path.join(folder_path, f"{folder_name}.csv")
+            compute_heatmap(model_name, folder_path, csv_filename, focus)
