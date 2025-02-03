@@ -1,13 +1,8 @@
 import gc
-import logging
-
 import cv2
 import gym
 import traceback
-import numpy as np
-import os, time, csv
-from PIL import Image
-from concurrent.futures import ThreadPoolExecutor
+import time
 from typing import List, Union, Dict, Tuple
 
 from perturbationdrive import GlobalLog
@@ -21,7 +16,7 @@ from perturbationdrive.imageperturbations import ImagePerturbation
 from perturbationdrive.Simulator.Scenario import Scenario
 from perturbationdrive.RoadGenerator.RoadGenerator import RoadGenerator
 from perturbationdrive.utils.perturb_conf import perturb_cfgs
-
+from utils.save_images import *
 from udacity_gym import UdacityGym, UdacitySimulator
 from udacity_gym.agent import UdacityAgent
 
@@ -63,43 +58,6 @@ class PerturbationDrive:
             image_size=self.image_size,
         )
         return image_perturbation
-
-    @staticmethod
-    def save_image(image_path, image):
-        if isinstance(image, np.ndarray):
-            image = Image.fromarray(image)
-        image.save(image_path)
-
-    @staticmethod
-    def perturb_driving_log(csv_path, data):
-        with open(csv_path, 'w', newline='') as csvfile:
-            if os.path.exists(csv_path):
-                os.remove(csv_path)
-                print(f"{csv_path} will be overwritten")
-
-        with open(csv_path, mode='w', newline='', encoding='utf-8') as csvfile:
-            writer = csv.writer(csvfile)
-            if data:
-                writer.writerow(data[0].keys())  # column names
-                for row in data:
-                    writer.writerow(row.values())
-
-    def save_data_in_batch(self, log_name, log_path, data, image_data):
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            futures = [
-                executor.submit(self.save_image, image_path, image)
-                for image_path, image in image_data
-            ]
-        # 等待所有任务完成
-        for future in futures:
-            try:
-                future.result()  # 检查任务状态, 确保没有failed save
-            except Exception as e:
-                self.logger.error(f"Error during image saving: {e}")
-
-        self.perturb_driving_log(os.path.join(log_path, log_name), data)
-        self.logger.info(f"Data saved under {log_name}!")
-        futures.clear()
 
     def grid_seach(
             self,
@@ -165,7 +123,7 @@ class PerturbationDrive:
             else:
                 if len(temporary_images) > 50: # crash happens in current scale, record the image and data, jump out to the next perturbation
                     os.makedirs(image_folder, exist_ok=True)
-                    self.save_data_in_batch(log_name, log_path, data, temporary_images)
+                    save_data_in_batch(log_name, log_path, data, temporary_images)
 
                 else:
                     self.logger.info("Driving performance bad, too short! Data is not saving!")
@@ -497,7 +455,7 @@ class PerturbationDrive:
                     if not os.path.exists(image_folder):
                         os.makedirs(image_folder)
                         self.logger.info(f"Folder created: {image_folder}")
-                    self.save_data_in_batch(log_name, log_path, data, temporary_images)
+                    save_data_in_batch(log_name, log_path, data, temporary_images)
                     self.logger.info(
                         f"Out_of_track Count: {crash.get('out_of_track')}; "
                         f"Collision Count: {crash.get('collision')}; "

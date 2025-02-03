@@ -59,9 +59,13 @@ def compute_heatmap(model, folder_path, csv_filename, focus):
 
     for idx, img in tqdm(zip(heatmap_df["index"], heatmap_df["origin_image_path"]), total=len(heatmap_df)):
 
-        x = np.asarray(Image.open(img))
-        x = utils.resize(x).astype('float32')
-        # print("image max value is: ", np.max(x)) # 231 ?
+        # for RoadGenerator, no need to resize
+        x = np.asarray(Image.open(img), dtype=np.float32)
+
+        #       for tracks model:
+        #         x = np.asarray(Image.open(img))
+        #         x = utils.resize(x).astype('float32')
+
         saliency_map = saliency(lambda output:score_decrease(output, focus), x, smooth_samples=20, smooth_noise=0.20)
         gradient = abs(prev_hm - saliency_map) if idx != 1 else 0
 
@@ -102,15 +106,9 @@ def compute_heatmap(model, folder_path, csv_filename, focus):
     plt.show()
 
     heatmap_df['heatmap_image_path'] = list_of_image_paths
-
     heatmap_df.to_csv(os.path.join(heatmap_dir,'heatmap_log.csv'), index=True)
 
-if __name__ == '__main__':
-    # the only change-needed params
-    track_index = 1 # lake, mountain or roadGenerator
-    focus = "steering" # steering, or throttle
-
-    # remain unchanged from:
+def run_heatmap_tracks(track_index, focus):
     model_name = load_model(track_infos[track_index]["model_path"])
     root_folder = f"perturbationdrive/logs/{track_infos[track_index]['track_name']}"
 
@@ -118,6 +116,35 @@ if __name__ == '__main__':
         print("Generating attention map on folder: ", folder_name)
 
         folder_path = os.path.join(root_folder, folder_name)
+        # heatmap_dir = os.path.join(folder_path, f"saliency_heatmap_{focus}")
+
         if os.path.isdir(folder_path) and model_name is not None:
             csv_filename = os.path.join(folder_path, f"{folder_name}.csv")
             compute_heatmap(model_name, folder_path, csv_filename, focus)
+
+def run_heatmap_roadGen(focus):
+    model_name = load_model(roadGen_infos["model_path"])
+    root_folder = f"perturbationdrive/logs/{roadGen_infos['track_name']}"
+
+    for folder_name in sorted(os.listdir(root_folder)):
+        parent_dir = os.path.join(root_folder, folder_name)
+
+        for scaled_folder in sorted(os.listdir(parent_dir)):
+            folder_path = os.path.join(parent_dir, scaled_folder)
+            print("Generating attention map on folder: ", scaled_folder)
+
+            if os.path.isdir(folder_path) and model_name is not None:
+                csv_filename = os.path.join(folder_path, f"{scaled_folder}.csv")
+                compute_heatmap(model_name, folder_path, csv_filename, focus)
+
+if __name__ == '__main__':
+    obj = "roadGen"
+    track_index = 3 # lake == 1, mountain == 3
+    focus = "throttle" # steering, or throttle
+
+    if obj == "tracks":
+        run_heatmap_tracks(track_index, focus)
+    elif obj == "roadGen":
+        run_heatmap_roadGen(focus)
+    else:
+        raise ValueError("Invalid object. Choose 'tracks' or 'roadGen'")

@@ -54,6 +54,10 @@ track_infos[3]['model_path'] = CHECKPOINT_DIR.joinpath(Training_Configs['model_d
 track_infos[3]['simulator'] = simulator_infos[1]
 track_infos[3]['driving_style']  = ["normal", "reverse", "normal", "reverse"]
 track_infos[3]['training_data_dir'] = Training_Configs['training_data_dir'].joinpath('lane_keeping_data', 'track3_throttle')
+
+roadGen_infos = defaultdict()
+roadGen_infos['track_name'] = 'RoadGenerator'
+roadGen_infos['model_path'] = CHECKPOINT_DIR.joinpath(Training_Configs['model_dir'], 'roadGen_trained.h5')
 # TODO: add code to override default settings
 
 model_cfgs = defaultdict()
