@@ -1,55 +1,56 @@
-import os
 
-from statsmodels.tsa.vector_ar import output
-from tqdm import tqdm
 from utils import utils
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import tensorflow as tf
 from PIL import Image
-from functools import partial
 from tensorflow.keras.models import load_model
 from tf_keras_vis.saliency import Saliency
 from tf_keras_vis.gradcam_plus_plus import GradcamPlusPlus
 from tf_keras_vis.scorecam import Scorecam
 from alibi.explainers import IntegratedGradients
+from tf_keras_vis.utils.model_modifiers import ReplaceToLinear
+
 
 class AttentionMapGenerator:
-    def __init__(self, model, focus="steering"):
+    def __init__(self, model, focus: int=0):
         """
         Initialize the class with a model and the focus parameter.
         """
         self.model = model
+        self.model_modifier = ReplaceToLinear()
         self.focus = focus
 
     def smooth_grad(self, x):
         saliency = Saliency(self.model,
                             model_modifier=None,
-                            clone=True)  # normalize_map=False   , also GradCam_pp, faster_score_cam, IntegratedGradients
-        score = saliency(partial(self.score_decrease),
-                                x,
-                                smooth_samples=20,
-                                smooth_noise=0.20)
-        return score
+                            clone=True)
+        score_function = lambda output: output[:, self.focus]
+        heatmap = saliency(score_function,
+                           x,
+                           smooth_samples=20,
+                           smooth_noise=0.20)
+        return heatmap
 
     def raw_smooth_grad(self, x):
         saliency = Saliency(self.model,
-                            normalize_map=False,
                             model_modifier=None,
-                            clone=True)  # normalize_map=False   , also GradCam_pp, faster_score_cam, IntegratedGradients
-        score = saliency(partial(self.score_decrease),
-                         x,
-                         smooth_samples=20,
-                         smooth_noise=0.20)
-        return score
+                            clone=True)
+        score_function = lambda output: output[:, self.focus]
+        heatmap = saliency(score_function,
+                           x,
+                           normalize_map=False,
+                           smooth_samples=20,
+                           smooth_noise=0.20)
+        return heatmap
 
     def grad_cam_pp(self, x):
         gradcam = GradcamPlusPlus(self.model,
-                                  model_modifier=None,
+                                  model_modifier=self.model_modifier,
                                   clone=True)
         # Generate heatmap with GradCAM
-        cam = gradcam(partial(self.score_decrease),
+        score_function = lambda output: output[:, self.focus]
+        cam = gradcam(score_function,
                       x,
                       penultimate_layer=-1)
         return cam
@@ -57,9 +58,11 @@ class AttentionMapGenerator:
     def faster_score_cam(self, x):
         # Create ScoreCAM object
         scorecam = Scorecam(self.model,
-                            model_modifier=None)
+                            model_modifier=self.model_modifier)
+
+        score_function = lambda output: output[:, self.focus]
         # Generate heatmap with Faster-ScoreCAM
-        cam = scorecam(partial(self.score_decrease),
+        cam = scorecam(score_function,
                        x,
                        penultimate_layer=-1,
                        max_N=10)
@@ -84,7 +87,6 @@ class AttentionMapGenerator:
         attributions = np.abs(attributions)
         normalized_attributions = np.zeros(shape=attributions.shape)
 
-
         # Normalization
         for i in range(attributions.shape[0]):
             try:
@@ -96,34 +98,42 @@ class AttentionMapGenerator:
         # print(normalized_attributions.shape)
         return normalized_attributions
 
-
-    def score_increase(self, output):
-        if self.focus == "steering":
-            return output[:, 0]
-        elif self.focus == "throttle":
-            return output[:, 1]
-        elif self.focus == "both":
-            return 0.5 * output[:, 0] + 0.5 * output[:, 1]
-        else:
-            raise ValueError("Invalid mode. Choose 'steering', 'throttle', or 'both'")
-
     def score_decrease(self, output):
-        if self.focus == "steering":
-            return -1.0 * output[:, 0]
-        elif self.focus == "throttle":
-            return -1.0 * output[:, 1]
-        elif self.focus == "both":
-            return -1.0 * (0.5 * output[:, 0] + 0.5 * output[:, 1])
-        else:
-            raise ValueError("Invalid mode. Choose 'steering', 'throttle', or 'both'")
+        return -1.0 * output[:, self.focus]
 
     def score_maintain(self, output):
-        if self.focus == "steering":
-            return tf.math.abs(1.0 / (output[:, 0] + tf.keras.backend.epsilon()))
-        elif self.focus == "throttle":
-            return tf.math.abs(1.0 / (output[:, 1] + tf.keras.backend.epsilon()))
-        elif self.focus == "both":
-            return tf.math.abs(1.0 / ((0.5 * output[:, 0] + 0.5 * output[:, 1]) + tf.keras.backend.epsilon()))
-        else:
-            raise ValueError("Invalid mode. Choose 'steering', 'throttle', or 'both'")
+        return tf.math.abs(1.0 / (output[:, self.focus] + tf.keras.backend.epsilon()))
+
+if __name__ == '__main__':
+
+    model = load_model("/home/jiaqq/Documents/ThirdEye-II/model/ckpts/ads/track1-steer-throttle.h5")
+    img = Image.open("/home/jiaqq/Documents/ThirdEye-II/perturbationdrive/logs/lake/lake_static_smoke_filter_scale3_log/image_logs/135.png")
+    img_array = utils.resize(np.array(img)).astype('float32') / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
+
+    # Find the last convolutional layer
+    # for layer in model.layers[::-1]:
+    #     if isinstance(layer, tf.keras.layers.Conv2D):
+    #         print(f"Using layer: {layer.name}")  # Debug
+    #         target_layer = layer.name
+    #         break
+    saliency = Saliency(model,
+                        model_modifier=ReplaceToLinear(),
+                        clone=True)  # normalize_map=False, also GradCam_pp, faster_score_cam, IntegratedGradients
+    score_function = lambda output: output[:, 0]
+    heatmap = saliency(score_function,
+                       img_array,
+                       normalize_map=False,)
+    # gradcam = GradcamPlusPlus(model,
+    #                             model_modifier=ReplaceToLinear())
+    # score_function = lambda output: output[:, 0]
+    # heatmap = gradcam(score_function, img_array, penultimate_layer=-1)
+    # scorecam = Scorecam(model,
+    #                     model_modifier=None)
+    # score_function = lambda output: output[:, 1]
+    # heatmap = scorecam(score_function, img_array, penultimate_layer=-1, max_N=10)
+    plt.imshow(img)
+    plt.imshow(heatmap[0], cmap="jet")  # 叠加到原图上
+    plt.axis("off")
+    plt.show()
 
