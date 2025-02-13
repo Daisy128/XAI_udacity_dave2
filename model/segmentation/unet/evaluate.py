@@ -1,6 +1,7 @@
 import os
 import pathlib
 import shutil
+from operator import truediv
 
 import lightning as pl
 import numpy as np
@@ -139,8 +140,9 @@ def all_set_evaluation_and_save(track, weather, model_name, image_dir, csv_filen
 
 
 if __name__ == '__main__':
-    track = "mountain"
+    track = "lake"
     weather = "sun"
+
     if track == "lake":
         model_name = "segmentation_unet_epoch=56_step=741_val_mIoU=0.9820912480354309_val_loss=0.02768610045313835.ckpt"
     elif track == "mountain":
@@ -159,6 +161,7 @@ if __name__ == '__main__':
             csv_filename = f"{folder_name}.csv"
             all_set_evaluation_and_save(track, weather, model_name, image_dir, csv_filename)
 
+
     # track = "mountain"
     # weather = "sun"
     # csv_filename = 'mountain_sun_training.csv'
@@ -166,3 +169,4 @@ if __name__ == '__main__':
     # model_name = "segmentation_unet_epoch=89_step=1980_val_mIoU=0.9733365774154663_val_loss=0.042826734483242035.ckpt"
     # #test_set_evaluation(track, weather, model_name, csv_filename)
     # all_set_evaluation_and_save(track, weather, model_name, image_dir, csv_filename)
+

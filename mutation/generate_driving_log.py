@@ -1,3 +1,4 @@
+import gc
 import json
 import os
 import pathlib
@@ -12,41 +13,9 @@ from perturbationdrive.perturbationdrive import save_data_in_batch
 
 track_index = 1
 
-def get_model(track, mutation_name):
-    mutate_root_dir = pathlib.Path(f"model/ckpts/ads-mutation")
-    mutate_models_path = os.path.join(mutate_root_dir, mutation_name, f"track{track_index}_{track}")
-    models = [f for f in os.listdir(mutate_models_path) if os.path.isfile(os.path.join(mutate_models_path, f))]
-    model_name = models[0]
+def generate_driving_log(env, mutate_path, log_path):
 
-    mutate_path = os.path.join(mutate_models_path, model_name)
-    return mutate_path
-
-
-if __name__ == '__main__':
-
-    # Track settings
-    track = track_infos[track_index]['track_name'] # lake, mountain
-    daytime = "day"
-    weather = "sunny"    
-    
-    mutation_name = "add_weights_regularisation_l1_6"
-    mutate_path = get_model(track, mutation_name)
-
-    log_root_dir = pathlib.Path(f"mutation/logs/{track}")
-
-    # Creating the simulator wrapper
-    simulator = UdacitySimulator(
-        sim_exe_path=track_infos[track_index]['simulator']['exe_path'],
-        host=track_infos[track_index]['simulator']['host'],
-        port=track_infos[track_index]['simulator']['port'],
-    )
-    # Creating the gym environment
-    env = UdacityGym(
-        simulator=simulator,
-    )
     observation, _ = env.reset(track=f"{track}", weather=f"{weather}", daytime=f"{daytime}")
-
-    simulator.start()
 
     # Wait for environment to set up
     while not observation or not observation.is_ready():
@@ -54,7 +23,6 @@ if __name__ == '__main__':
         print("Waiting for environment to set up...")
         time.sleep(1)
 
-    # log_observation_callback = LogObservationCallback(log_root_dir)
     agent = SupervisedAgent_tf(
         model_path=mutate_path,
         max_speed=40,
@@ -65,18 +33,17 @@ if __name__ == '__main__':
     frame, skip_frames = 0, 0
     temporary_images = []
     data = []
-    manual_crash=0
+    manual_crash = 0
     max_gap = 2
     prev_cte = None
     prev_is_crashed = None
-    total_crash=0
-    
+    total_crash = 0
+
     log_name = f"{track}_{mutation_name}_log.csv"
-    log_path = os.path.join(log_root_dir, f"{track}_{mutation_name}_log")
     image_folder = os.path.join(log_path, "image_logs")
-    
+
     # Interacting with the gym environment
-    for _ in tqdm.tqdm(iter(lambda: observation.lap == 1, False)):
+    while observation.lap == 1:
         frame += 1
         image_path = os.path.join(image_folder, f"{frame}.png")
 
@@ -132,8 +99,49 @@ if __name__ == '__main__':
 
     data.clear()
     temporary_images.clear()
+    gc.collect()
 
-    # log_observation_callback.save()
+if __name__ == '__main__':
+
+    # Track settings
+    track = track_infos[track_index]['track_name'] # lake, mountain
+    daytime = "day"
+    weather = "sunny"
+
+    simulator = UdacitySimulator(
+        sim_exe_path=track_infos[track_index]['simulator']['exe_path'],
+        host=track_infos[track_index]['simulator']['host'],
+        port=track_infos[track_index]['simulator']['port'],
+    )
+
+    env = UdacityGym(
+        simulator=simulator,
+    )
+
+    mutate_root_dir = pathlib.Path(f"model/ckpts/ads-mutation")
+    log_root_dir = pathlib.Path(f"mutation/logs/{track}")
+
+    simulator.start()
+
+    for mutation_name in os.listdir(mutate_root_dir):
+        # model/ckpts/ads-mutation/add_weights_regularisation_l1_6
+        mutate_models_path = os.path.join(mutate_root_dir, mutation_name, f"track{track_index}_{track}")
+
+        models = [f for f in os.listdir(mutate_models_path) if os.path.isfile(os.path.join(mutate_models_path, f))]
+        # xxx_final.h5
+        model_name = models[0]
+
+        mutate_path = os.path.join(mutate_models_path, model_name)
+        log_path = os.path.join(log_root_dir, f"{track}_{mutation_name}_log")
+
+        if os.path.exists(log_path):
+            print(f"{log_path} already exists, skip!")
+            continue
+        else:
+            os.makedirs(log_path, exist_ok=True)
+            print(f"{log_path} created! Recording driving log on: ", mutate_path)
+
+            generate_driving_log(env, mutate_path, log_path)
+
     simulator.close()
     env.close()
-    print("Experiment concluded.")

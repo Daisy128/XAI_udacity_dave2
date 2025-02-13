@@ -9,5 +9,6 @@
 /model/ckpts
 unitylog.txt
 /mutation/utils/logs
+/mutation/logs
 /perturbationdrive/logs
 *.log

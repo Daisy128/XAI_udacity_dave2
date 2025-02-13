@@ -46,7 +46,7 @@ def normalize(image):
     return image
 
 
-def preprocess(image, debug = False):
+def preprocess(image, debug = True):
     """
     Combine all preprocess functions into one
     """

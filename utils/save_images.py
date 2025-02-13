@@ -41,7 +41,7 @@ def save_data_in_batch(log_name, log_path, data, image_data):
     Raises:
         Exception: If any image saving operation fails, logs the error.
     """
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=10) as executor:
         futures = [
             executor.submit(save_image, image_path, image)
             for image_path, image in image_data
