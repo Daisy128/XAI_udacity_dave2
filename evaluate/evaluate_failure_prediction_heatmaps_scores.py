@@ -48,8 +48,10 @@ def evaluate_failure_prediction(log_dir, heatmap_type, track, focus, perturb_typ
                         f"{heatmap_type}_{summary_type}_scores.npy")
     anomalous_losses = np.load(path)
 
-    path = glob.glob(f"{log_dir}/{perturb_type}/{heatmap_type}_{focus}/*.csv")
+    path = glob.glob(f"{log_dir}/{perturb_type}/*.csv")
+    print(path[0])
     data_df_anomalous = pd.read_csv(path[0])
+
     data_df_anomalous['loss'] = anomalous_losses
 
     # 3. compute a threshold from nominal conditions, and FP and TN
@@ -156,22 +158,27 @@ def compute_tp_and_fn(data_df_anomalous, losses_on_anomalous, threshold, seconds
     ''' 
         prepare dataset to get TP and FN from unexpected
         '''
-    number_frames_anomalous = pd.Series.max(data_df_anomalous['frameId']) # im
-    simulation_time_anomalous = pd.Series.max(data_df_anomalous['time']) # im
-    fps_anomalous = number_frames_anomalous // simulation_time_anomalous
+    # number_frames_anomalous = pd.Series.max(data_df_anomalous['frameId']) # im
+    # simulation_time_anomalous = pd.Series.max(data_df_anomalous['time']) # im
+    # fps_anomalous = number_frames_anomalous // simulation_time_anomalous
+    number_frames_anomalous = pd.Series.max(data_df_anomalous['index'])  # im
+    fps_anomalous = 15
 
-    crashed_anomalous = data_df_anomalous['crashed'] # im
+    crashed_anomalous = data_df_anomalous['is_crashed'] # im
     crashed_anomalous.is_copy = None
     crashed_anomalous_in_anomalous_conditions = crashed_anomalous.copy()
 
     # creates the ground truth
     all_first_frame_position_crashed_sequences = []
     for idx, item in enumerate(crashed_anomalous_in_anomalous_conditions):
-        if idx == number_frames_anomalous:  # we have reached the end of the file
+        if idx == number_frames_anomalous - 1:  # we have reached the end of the file
             continue
 
-        if crashed_anomalous_in_anomalous_conditions[idx] == 0 and crashed_anomalous_in_anomalous_conditions[
-            idx + 1] == 1:
+        # if crashed_anomalous_in_anomalous_conditions[idx] == 0 and crashed_anomalous_in_anomalous_conditions[
+        #     idx + 1] == 1:
+
+        # Since I used False/True to represent crashed or not, instead of 0/1
+        if not item and crashed_anomalous_in_anomalous_conditions[idx + 1]:
             first_index_crash = idx + 1
             all_first_frame_position_crashed_sequences.append(first_index_crash)
             # print("first_index_crash: %d" % first_index_crash)
@@ -197,10 +204,9 @@ def compute_tp_and_fn(data_df_anomalous, losses_on_anomalous, threshold, seconds
             print("failure %d cannot be detected at TTM=%d" % (item, seconds_to_anticipate))
             undetectable_windows += 1
         else:
-            crashed_anomalous_in_anomalous_conditions.loc[item - frames_to_reassign: item - frames_to_reassign_2] = 1
-            reaction_window = reaction_window.append(
-                crashed_anomalous_in_anomalous_conditions[item - frames_to_reassign: item - frames_to_reassign_2])
+            crashed_anomalous_in_anomalous_conditions.loc[item - frames_to_reassign: item - frames_to_reassign_2] = True
 
+            reaction_window = pd.concat([reaction_window, crashed_anomalous_in_anomalous_conditions[item - frames_to_reassign: item - frames_to_reassign_2]])
             print("frames between %d and %d have been labelled as 1" % (
                 item - frames_to_reassign, item - frames_to_reassign_2))
             print("reaction frames size is %d" % len(reaction_window))
@@ -237,9 +243,10 @@ def compute_fp_and_tn(data_df_nominal, aggregation_method):
     # when conditions == nominal I count only FP and TN
 
     # 帧率fps_nominal = 数据集的总帧数 / 总时间 = 窗口长度
-    number_frames_nominal = pd.Series.max(data_df_nominal['frameId'])
-    simulation_time_nominal = pd.Series.max(data_df_nominal['time'])
-    fps_nominal = number_frames_nominal // simulation_time_nominal
+    # number_frames_nominal = pd.Series.max(data_df_nominal['index'])
+    # simulation_time_nominal = pd.Series.max(data_df_nominal['time'])
+    # fps_nominal = number_frames_nominal // simulation_time_nominal
+    fps_nominal = 15
 
     # 窗口数量 = 数据集总长度 / 窗口长度， 删除余数
     num_windows_nominal = len(data_df_nominal) // fps_nominal

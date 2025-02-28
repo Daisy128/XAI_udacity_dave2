@@ -65,7 +65,7 @@ def generate_driving_log(env, mutate_path, log_path):
         if skip_frames == 0:
             temporary_images.append((image_path, image))
             data.append({
-                'index': frame,
+                'frameId': frame,
                 'track': track,
                 'model': mutate_path,
                 'perturb_name': mutation_name,

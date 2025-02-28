@@ -3,7 +3,7 @@ import os
 from evaluate_failure_prediction_heatmaps_scores import evaluate_failure_prediction
 
 if __name__ == '__main__':
-    track = "lake"
+    track = "mountain"
     heatmap_method_list = ["smooth_grad", "raw_smooth_grad",
                            "grad_cam_pp", "raw_grad_cam_pp",
                            "faster_score_cam", "raw_faster_score_cam",
@@ -17,6 +17,6 @@ if __name__ == '__main__':
                                 heatmap_type="smooth_grad",
                                 track= track,
                                 focus="steer",
-                                perturb_type='lake_defocus_blur_scale6_log',
-                                summary_type="average",
-                                aggregation_method='mean')
+                                perturb_type='mountain_cutout_filter_scale5_log',
+                                summary_type="average_gradient",
+                                aggregation_method='max')

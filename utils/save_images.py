@@ -1,7 +1,6 @@
 import os
-import csv
-import logging
 import numpy as np
+import pandas as pd
 from PIL import Image
 from concurrent.futures import ThreadPoolExecutor
 
@@ -11,18 +10,9 @@ def save_image(image_path, image):
     image.save(image_path)
 
 def write_driving_log(csv_path, data):
-    with open(csv_path, 'w', newline='') as csvfile:
-        if os.path.exists(csv_path):
-            os.remove(csv_path)
-            print(f"{csv_path} will be overwritten")
-
-    with open(csv_path, mode='w', newline='', encoding='utf-8') as csvfile:
-        writer = csv.writer(csvfile)
-        if data:
-            writer.writerow(data[0].keys())  # column names
-            for row in data:
-                writer.writerow(row.values())
-
+    data_df = pd.DataFrame(data)
+    data_df.index += 1
+    data_df.to_csv(csv_path, index_label='index', encoding='utf-8', mode='w')
 
 def save_data_in_batch(log_name, log_path, data, image_data):
 

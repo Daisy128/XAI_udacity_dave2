@@ -247,7 +247,7 @@ class PerturbationDrive:
                         break
 
                 data.append({
-                    'index': counter,
+                    'frameId': counter,
                     'track': "Road_Generator",
                     'model': "roadGen_trained.h5",
                     'perturb_name': perturbation_function_string,
@@ -417,7 +417,7 @@ class PerturbationDrive:
                     if skip_frames == 0:
                         temporary_images.append((image_path, image))
                         data.append({
-                            'index': frame,
+                            'frameId': frame,
                             'track': track_name,
                             'model': self.model_name,
                             'perturb_name': perturbation,

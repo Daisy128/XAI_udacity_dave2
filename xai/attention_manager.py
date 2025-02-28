@@ -46,7 +46,7 @@ class AttentionMapManager:
 
     def compute_heatmap(self, folder_path, csv_filename):
 
-        data_df = pd.read_csv(csv_filename, usecols=["index", "is_crashed", "image_path", "steer", "throttle"])
+        data_df = pd.read_csv(csv_filename, usecols=["index", "frameId", "is_crashed", "image_path", "steer", "throttle"])
 
         heatmap_dir = os.path.join(folder_path, f"{self.args['function_name']}_{self.args['focus']}")
         os.makedirs(heatmap_dir, exist_ok=True)
@@ -61,7 +61,7 @@ class AttentionMapManager:
         list_of_image_paths = []
         prev_hm = np.zeros((80, 160), dtype=np.float32)
 
-        for idx, img in tqdm(zip(data_df["index"], data_df["image_path"]), total=len(data_df)):
+        for frameId, img in tqdm(zip(data_df["frameId"], data_df["image_path"]), total=len(data_df)):
             # image preprocess
             image = np.array(Image.open(img))
             image_crop = crop(image)
@@ -73,7 +73,7 @@ class AttentionMapManager:
             total_score.append(score)
             predicts.append(prediction)
 
-            gradient = abs(prev_hm - score) if idx != 1 else 0
+            gradient = abs(prev_hm - score) if frameId != 1 else 0
             average = np.average(score)
             average_gradient = np.average(gradient)
             prev_hm = score
@@ -85,13 +85,13 @@ class AttentionMapManager:
                 heatmap = np.squeeze(score) # (1, 80, 160) -> (80, 160)
                 # Debug:
                 # print(f"Attribution min: {np.min(heatmap)}, max: {np.max(heatmap)}")
-                heatmap_path = os.path.join(heatmap_dir, f"heatmap_{idx}.png")
+                heatmap_path = os.path.join(heatmap_dir, f"heatmap_{frameId}.png")
                 plt.imsave(heatmap_path, heatmap, cmap='jet')
                 plt.close()
                 list_of_image_paths.append(heatmap_path)
 
                 fig = self.save_overlay_image(image_resize, heatmap)
-                fig.savefig(os.path.join(overlay_dir, f"overlay_{idx}.png"))
+                fig.savefig(os.path.join(overlay_dir, f"overlay_{frameId}.png"))
 
         # saved as numpy arrays
         np.save(os.path.join(heatmap_dir, f"{self.args['function_name']}_score.npy"), total_score)
