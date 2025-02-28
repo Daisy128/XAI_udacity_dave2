@@ -1,4 +1,3 @@
-
 from utils import utils
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,47 +12,38 @@ from tf_keras_vis.utils.model_modifiers import ReplaceToLinear
 
 
 class AttentionMapGenerator:
-    def __init__(self, model, focus: int=0):
+    def __init__(self, model, focus: str = "steer"):
         """
         Initialize the class with a model and the focus parameter.
         """
         self.model = model
         self.model_modifier = ReplaceToLinear()
-        self.focus = focus
+        if focus == "steer":
+            self.focus = 0
+        elif focus == "throttle":
+            self.focus = 1
+        else:
+            raise ValueError("Invalid focus parameter. Please choose 'steer' or 'throttle'.")
 
     def smooth_grad(self, x):
         saliency = Saliency(self.model,
-                            model_modifier=None,
+                            model_modifier=self.model_modifier,
                             clone=True)
         score_function = lambda output: output[:, self.focus]
-        heatmap = saliency(score_function,
+        heatmap, prediction = saliency(score_function,
                            x,
                            smooth_samples=20,
-                           smooth_noise=0.20)
-        return heatmap
-
-    def raw_smooth_grad(self, x):
-        saliency = Saliency(self.model,
-                            model_modifier=None,
-                            clone=True)
-        score_function = lambda output: output[:, self.focus]
-        heatmap = saliency(score_function,
-                           x,
-                           normalize_map=False,
-                           smooth_samples=20,
-                           smooth_noise=0.20)
-        return heatmap
+                           smooth_noise=0.20,)
+        return heatmap, prediction
 
     def grad_cam_pp(self, x):
         gradcam = GradcamPlusPlus(self.model,
-                                  model_modifier=self.model_modifier,
-                                  clone=True)
-        # Generate heatmap with GradCAM
+                                  model_modifier=None)
         score_function = lambda output: output[:, self.focus]
-        cam = gradcam(score_function,
-                      x,
-                      penultimate_layer=-1)
-        return cam
+        cam, prediction = gradcam(score_function,
+                                  x,
+                                  penultimate_layer=-1)
+        return cam, prediction
 
     def faster_score_cam(self, x):
         # Create ScoreCAM object
@@ -62,41 +52,110 @@ class AttentionMapGenerator:
 
         score_function = lambda output: output[:, self.focus]
         # Generate heatmap with Faster-ScoreCAM
-        cam = scorecam(score_function,
+        cam, prediction = scorecam(score_function,
                        x,
                        penultimate_layer=-1,
                        max_N=10)
-        return cam
+        return cam, prediction
 
-    def integrated_gradients(self, X, steps=10):
+    def integrated_gradients(self, x, steps=10):
+        """
+        Generates normalized attribution maps for input data using the Integrated Gradients method.
+
+        Parameters:
+            X: ndarray  Input data for which attributions are to be computed.
+            steps: Number of steps for the integration calculation. Controls the number
+                       of steps along the path from the baseline to the input. Defaults to 10.
+
+        Returns: ndarray
+                Normalized attribution maps with the same shape as input data, focusing on the
+                positive part of attributions,scaled to a range of [0, 1].
+        """
         ig = IntegratedGradients(self.model,
                                  n_steps=steps,
                                  method="gausslegendre")
-        #predictions = self.model(X).numpy().argmax(axis=1)
-        predictions = np.ones((X.shape[0])) * 3
-        predictions = predictions.astype(int)
-        explanation = ig.explain(X,
-                                 baselines=None,
-                                 target=predictions)
-        attributions = explanation.attributions[0]
-        # remove single-dimensional shape of the array.
-        # attributions = attributions.squeeze()
-        attributions = np.reshape(attributions, (-1, 28, 28))
-        # only focus on positive part
-        # attributions = attributions.clip(0, 1)
-        attributions = np.abs(attributions)
-        normalized_attributions = np.zeros(shape=attributions.shape)
 
-        # Normalization
-        for i in range(attributions.shape[0]):
-            try:
-                # print(f"attention map difference {np.max(attributions[i]) - np.min(attributions[i])}")
-                normalized_attributions[i] = (attributions[i] - np.min(attributions[i])) / (np.max(attributions[i]) - np.min(attributions[i]))
-            except ZeroDivisionError:
-                print("Error: Cannot divide by zero")
-                return
-        # print(normalized_attributions.shape)
-        return normalized_attributions
+        x = np.expand_dims(x, axis=0)
+        # prediction = self.model.predict(x, verbose=0)
+        prediction = None # to save memory
+        explanation = ig.explain(x,
+                                 baselines=0,
+                                 target=0)
+        attributions = np.abs(explanation.attributions[0])
+        # attributions = explanation.attributions[0]
+        # attributions = attributions.clip(0, 1)
+
+        # normalization
+        try:
+            normalized_attributions = (attributions - np.min(attributions)) / (np.max(attributions) - np.min(attributions))
+        except ZeroDivisionError:
+            print("Error: Cannot divide by zero")
+            return
+
+        return normalized_attributions, prediction
+
+    def raw_smooth_grad(self, x):
+        saliency = Saliency(self.model,
+                            model_modifier=self.model_modifier,
+                            clone=True)
+        score_function = lambda output: output[:, self.focus]
+        heatmap, prediction = saliency(score_function,
+                           x,
+                           normalize_map=False,
+                           smooth_samples=20,
+                           smooth_noise=0.20)
+        return heatmap, prediction
+
+    def raw_grad_cam_pp(self, x):
+        gradcam = GradcamPlusPlus(self.model,
+                                  model_modifier=None)
+        score_function = lambda output: output[:, self.focus]
+        cam, prediction = gradcam(score_function,
+                                  x,
+                                  penultimate_layer=-1,
+                                  normalize_cam=False)
+        return cam, prediction
+
+    def raw_faster_score_cam(self, x):
+        # Create ScoreCAM object
+        scorecam = Scorecam(self.model,
+                            model_modifier=self.model_modifier)
+
+        score_function = lambda output: output[:, self.focus]
+        # Generate heatmap with Faster-ScoreCAM
+        cam, prediction = scorecam(score_function,
+                                   x,
+                                   penultimate_layer=-1,
+                                   max_N=10,
+                                   normalize_cam=False)
+        return cam, prediction
+
+    def raw_integrated_gradients(self, x, steps=10):
+        """
+        Generates normalized attribution maps for input data using the Integrated Gradients method.
+
+        Parameters:
+            X: ndarray  Input data for which attributions are to be computed.
+            steps: Number of steps for the integration calculation. Controls the number
+                       of steps along the path from the baseline to the input. Defaults to 10.
+
+        Returns: ndarray
+                Normalized attribution maps with the same shape as input data, focusing on the
+                positive part of attributions,scaled to a range of [0, 1].
+        """
+        ig = IntegratedGradients(self.model,
+                                 n_steps=steps,
+                                 method="gausslegendre")
+
+        x = np.expand_dims(x, axis=0)
+        # prediction = self.model.predict(x, verbose=0)
+        prediction = None # only re-check, None to save memory
+        explanation = ig.explain(x,
+                                 baselines=0,
+                                 target=0)
+        attributions = np.abs(explanation.attributions[0])
+
+        return attributions, prediction
 
     def score_decrease(self, output):
         return -1.0 * output[:, self.focus]
@@ -107,33 +166,26 @@ class AttentionMapGenerator:
 if __name__ == '__main__':
 
     model = load_model("/home/jiaqq/Documents/ThirdEye-II/model/ckpts/ads/track1-steer-throttle.h5")
-    img = Image.open("/home/jiaqq/Documents/ThirdEye-II/perturbationdrive/logs/lake/lake_static_smoke_filter_scale3_log/image_logs/135.png")
-    img_array = utils.resize(np.array(img)).astype('float32') / 255.0
-    img_array = np.expand_dims(img_array, axis=0)
+    img = Image.open("/home/jiaqq/Documents/ThirdEye-II/perturbationdrive/logs/lake/lake_static_smoke_filter_scale3_log/image_logs/computed_segmentation_lake_sun/computed_1.png")
 
-    # Find the last convolutional layer
-    # for layer in model.layers[::-1]:
-    #     if isinstance(layer, tf.keras.layers.Conv2D):
-    #         print(f"Using layer: {layer.name}")  # Debug
-    #         target_layer = layer.name
-    #         break
-    saliency = Saliency(model,
-                        model_modifier=ReplaceToLinear(),
-                        clone=True)  # normalize_map=False, also GradCam_pp, faster_score_cam, IntegratedGradients
-    score_function = lambda output: output[:, 0]
-    heatmap = saliency(score_function,
-                       img_array,
-                       normalize_map=False,)
-    # gradcam = GradcamPlusPlus(model,
-    #                             model_modifier=ReplaceToLinear())
-    # score_function = lambda output: output[:, 0]
-    # heatmap = gradcam(score_function, img_array, penultimate_layer=-1)
-    # scorecam = Scorecam(model,
-    #                     model_modifier=None)
-    # score_function = lambda output: output[:, 1]
-    # heatmap = scorecam(score_function, img_array, penultimate_layer=-1, max_N=10)
-    plt.imshow(img)
-    plt.imshow(heatmap[0], cmap="jet")  # 叠加到原图上
-    plt.axis("off")
+    from utils.utils import *
+    image = np.array(img)
+    image_crop = crop(image)
+    image_resize = resize(image_crop) # used for overlapped image
+    image_yuv = rgb2yuv(image_resize)
+    image_nor = normalize(image_yuv)
+
+    generator = AttentionMapGenerator(model, focus="steer")
+    score, prediction = generator.integrated_gradients(image_nor)
+    heatmap = np.squeeze(score)
+    fig, ax = plt.subplots(figsize=(20, 10), dpi=100)  # dpi: high-resolution output
+    ax.imshow(image_resize)
+    ax.imshow(heatmap, cmap='jet', alpha=0.6)
+    fig.subplots_adjust(left=0, right=1, top=1, bottom=0)  # 去除 padding
     plt.show()
+
+    # plt.imshow(np.squeeze(img))
+    # plt.imshow(heatmap[0], cmap="jet")  # 叠加到原图上
+    # plt.axis("off")
+    # plt.show()
 

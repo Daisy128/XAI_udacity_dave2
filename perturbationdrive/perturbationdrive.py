@@ -329,7 +329,10 @@ class PerturbationDrive:
         env = UdacityGym(
             simulator=self.simulator,
         )
-        image_perturbation = self.setImagePerturbation()
+        if self.perturb:
+            image_perturbation = self.setImagePerturbation()
+        else:
+            image_perturbation = None
 
         self.simulator.start()
 
@@ -373,8 +376,11 @@ class PerturbationDrive:
                     image_path = os.path.join(image_folder, f"{frame}.png")
                     # isinstance(obs.input_image, PIL.PngImagePlugin.PngImageFile)
                     # np.array(obs.input_image)为 RGB, shape (160, 320, 3)
-                    image = image_perturbation.perturbation(np.array(obs.input_image), perturbation, scale)
-                    obs.input_image = image  # isinstance(image, np.ndarray)
+                    if image_perturbation is not None:
+                        image = image_perturbation.perturbation(np.array(obs.input_image), perturbation, scale)
+                        obs.input_image = image  # isinstance(image, np.ndarray)
+                    else:
+                        image = obs.input_image
 
                     actions = self.agent(obs)  # obs.input_image.shape == (160, 320, 3)
 
@@ -448,8 +454,16 @@ class PerturbationDrive:
 
                 if total_crash < total_crash_limit[0]:
                     crash_not_enough = True
-                    self.logger.info(
-                        f"ADS drives perfect! Skipping record of {log_name} and deleted the image folder")
+                    if self.perturb:
+                        self.logger.info(
+                            f"ADS drives perfect! Skipping record of {log_name} and deleted the image folder")
+                    else:
+                        if not os.path.exists(image_folder):
+                            os.makedirs(image_folder)
+                            self.logger.info(f"Folder created: {image_folder}")
+                        save_data_in_batch(log_name, log_path, data, temporary_images)
+                        print("Normal driving saved in: ", {image_folder})
+                        break
 
                 elif total_crash_limit[0] <= total_crash <= total_crash_limit[1]:
                     if not os.path.exists(image_folder):
@@ -461,7 +475,6 @@ class PerturbationDrive:
                         f"Collision Count: {crash.get('collision')}; "
                         f"Manual detected crash: {manual_crash}"
                     )
-
                     break  # jump out of current perturbation
 
                 else:  # total_crash > total_crash_limit[1]:

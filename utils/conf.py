@@ -50,7 +50,8 @@ track_infos[1]['driving_style'] = ["normal_lowspeed", "reverse_lowspeed","normal
 track_infos[1]['training_data_dir'] = Training_Configs['training_data_dir'].joinpath('lane_keeping_data', 'track1_throttle')
 
 track_infos[3]['track_name'] = 'mountain'
-track_infos[3]['model_path'] = CHECKPOINT_DIR.joinpath(Training_Configs['model_dir'], 'track3-epoch-138.h5')
+track_infos[3]['model_name'] = 'track3-steer-throttle.h5'
+track_infos[3]['model_path'] = CHECKPOINT_DIR.joinpath(Training_Configs['model_dir'], track_infos[3]['model_name'])
 track_infos[3]['simulator'] = simulator_infos[1]
 track_infos[3]['driving_style']  = ["normal", "reverse", "normal", "reverse"]
 track_infos[3]['training_data_dir'] = Training_Configs['training_data_dir'].joinpath('lane_keeping_data', 'track3_throttle')

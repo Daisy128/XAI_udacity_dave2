@@ -103,6 +103,7 @@ def run_perturb_udacity_tracks(track_config, config, perturb_cfgs):
         start_scale=config['start_scale'],
         visualize=perturb_cfgs['visualize'],
         logger=logger,
+        perturb=perturb_cfgs['perturb'],
     )
 
     benchmarking_obj.perturb_tracks(

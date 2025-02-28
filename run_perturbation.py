@@ -25,9 +25,10 @@ if __name__ == '__main__':
 
         config['model_name'] = "track3-steer-throttle.h5"
         config['model_path'] = os.path.join("./model/ckpts/ads", config['model_name'])
-        config['perturbations'] = ['static_rain_filter', 'static_smoke_filter']#['saturation_decrease_filter',
+        config['perturbations'] = ['normial']
         config['track_index'] = 3
         config['start_scale'] = 0
+        perturb_cfgs['perturb'] = False
 
         from perturbationdrive.utils.perturb_conf import udacity_tracks
         # perturbed_simulate(config)

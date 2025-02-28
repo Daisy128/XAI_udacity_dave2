@@ -1,48 +1,77 @@
 import gc
 import os
 import pathlib
+
 from tqdm import tqdm
-from utils import utils
+
+from utils.utils import *
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from PIL import Image
 from tensorflow.keras.models import load_model
 from utils.conf import roadGen_infos
-from xai.attention_generator import AttentionMapGenerator
 
 
 class AttentionMapManager:
 
-    def __init__(self, heatmap_function, args: dict):
-        self.args = args
-        self.heatmap_function = heatmap_function
+    def __init__(self, heatmap_config: dict):
+        self.args = heatmap_config['args']
+        self.heatmap_function = heatmap_config['heatmap_function']
+        self.save_images = heatmap_config['save_images']
+
+        if self.args['track_index'] == 1:
+            self.args['track_name'] = "lake"
+        elif self.args['track_index'] == 3:
+            self.args['track_name'] = "mountain"
+        else:
+            raise ValueError("Invalid track index")
+
+    def save_overlay_image(self, original_img, heatmap):
+        fig, ax = plt.subplots(figsize=(20, 10), dpi=100)  # dpi: high-resolution output
+        ax.imshow(original_img)
+        ax.imshow(heatmap, cmap='jet', alpha=0.4)
+        ax.axis('off')
+        # # 关闭坐标轴和边界
+        # ax.set_xticks([])
+        # ax.set_yticks([])
+        # ax.set_frame_on(False)
+
+        # 直接匹配画布和图像尺寸
+        fig.subplots_adjust(left=0, right=1, top=1, bottom=0)  # 去除 padding
+        plt.close(fig)
+
+        return fig
 
 
     def compute_heatmap(self, folder_path, csv_filename):
 
-        data_df = pd.read_csv(csv_filename, usecols=["index", "is_crashed", "image_path"])
+        data_df = pd.read_csv(csv_filename, usecols=["index", "is_crashed", "image_path", "steer", "throttle"])
 
         heatmap_dir = os.path.join(folder_path, f"{self.args['function_name']}_{self.args['focus']}")
         os.makedirs(heatmap_dir, exist_ok=True)
-        overlay_dir = os.path.join(folder_path, f"{self.args['function_name']}_overlay_{self.args['focus']}")
-        os.makedirs(overlay_dir, exist_ok=True)
+        if self.save_images:
+            overlay_dir = os.path.join(folder_path, f"{self.args['function_name']}_overlay_{self.args['focus']}")
+            os.makedirs(overlay_dir, exist_ok=True)
 
         total_score = []
+        predicts = []
         avg_heatmaps = []
         avg_gradient_heatmaps = []
         list_of_image_paths = []
         prev_hm = np.zeros((80, 160), dtype=np.float32)
 
         for idx, img in tqdm(zip(data_df["index"], data_df["image_path"]), total=len(data_df)):
+            # image preprocess
+            image = np.array(Image.open(img))
+            image_crop = crop(image)
+            image_resize = resize(image_crop)
+            image_yuv = rgb2yuv(image_resize)
+            image_nor = normalize(image_yuv)
 
-            x = np.asarray(Image.open(img), dtype=np.float32)
-            # for Tracks need to resize
-            if self.args['track_name'] != "roadGen":
-                x = utils.resize(x)
-
-            score = self.heatmap_function(x)
+            score, prediction = self.heatmap_function(image_nor)
             total_score.append(score)
+            predicts.append(prediction)
 
             gradient = abs(prev_hm - score) if idx != 1 else 0
             average = np.average(score)
@@ -52,16 +81,17 @@ class AttentionMapManager:
             avg_heatmaps.append(average)
             avg_gradient_heatmaps.append(average_gradient)
 
-            heatmap = os.path.join(heatmap_dir, f"heatmap_{idx}.png")
-            plt.imsave(heatmap, np.squeeze(score))
+            if self.save_images:
+                heatmap = np.squeeze(score) # (1, 80, 160) -> (80, 160)
+                # Debug:
+                # print(f"Attribution min: {np.min(heatmap)}, max: {np.max(heatmap)}")
+                heatmap_path = os.path.join(heatmap_dir, f"heatmap_{idx}.png")
+                plt.imsave(heatmap_path, heatmap, cmap='jet')
+                plt.close()
+                list_of_image_paths.append(heatmap_path)
 
-            list_of_image_paths.append(heatmap)
-
-            heatmap = plt.cm.jet(np.squeeze(score))[:, :, :3]
-            heatmap = (heatmap * 255).astype(np.uint8)
-            overlay = (x * 0.5 + heatmap * 0.5).astype(np.uint8)
-            overlay_path = os.path.join(overlay_dir, f"overlay_{idx}.png")
-            plt.imsave(overlay_path, overlay)
+                fig = self.save_overlay_image(image_resize, heatmap)
+                fig.savefig(os.path.join(overlay_dir, f"overlay_{idx}.png"))
 
         # saved as numpy arrays
         np.save(os.path.join(heatmap_dir, f"{self.args['function_name']}_score.npy"), total_score)
@@ -80,7 +110,10 @@ class AttentionMapManager:
         plt.savefig(os.path.join(heatmap_dir, "average_gradient_scores_hist.png"))
         plt.clf()
 
-        data_df['heatmap_image_path'] = list_of_image_paths
+        data_df[f'predicted_{self.args["focus"]}'] = predicts
+        if self.save_images:
+            data_df['heatmap_image_path'] = list_of_image_paths
+
         data_df.to_csv(os.path.join(heatmap_dir, 'heatmap_log.csv'), index=False)
 
         del avg_heatmaps, avg_gradient_heatmaps, list_of_image_paths, prev_hm
@@ -98,17 +131,23 @@ class AttentionMapManager:
             raise ValueError("Invalid object type. Choose 'tracks' or 'roadGen'")
 
     def run_heatmap_tracks(self):
+        # for testing
+        # root_folder = f"perturbationdrive/logs/{self.args['track_name']}/lake"
         root_folder = f"perturbationdrive/logs/{self.args['track_name']}"
-
         for folder_name in os.listdir(root_folder):
-            print("Generating attention map on folder: ", folder_name)
+            heatmap_folder = os.path.join(root_folder, folder_name, f"{self.args['function_name']}_{self.args['focus']}")
+            if not os.path.isdir(heatmap_folder):
+                print("Generating attention map on folder: ", folder_name)
 
-            # perturbationdrive/logs/lake/lake_cutout_filter_scale8_log
-            folder_path = os.path.join(root_folder, folder_name)
+                # perturbationdrive/logs/lake/lake_cutout_filter_scale8_log
+                folder_path = os.path.join(root_folder, folder_name)
 
-            if os.path.isdir(folder_path):
-                csv_filename = os.path.join(folder_path, f"{folder_name}.csv")
-                self.compute_heatmap(folder_path, csv_filename)
+                if os.path.isdir(folder_path):
+                    csv_filename = os.path.join(folder_path, f"{folder_name}.csv")
+                    print("Computing heatmap on model: ", csv_filename, " ...")
+                    self.compute_heatmap(folder_path, csv_filename)
+            # else:
+            #     print("Heatmap for folder: ", folder_name, " already exists. Skipping.")
 
     def run_heatmap_roadGen(self):
         root_folder = f"perturbationdrive/logs/{roadGen_infos['track_name']}"
