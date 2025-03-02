@@ -1,14 +1,17 @@
 import os
 import pathlib
-os.chdir(os.path.dirname(os.getcwd()))
 import numpy as np
 import pandas as pd
-from PIL.Image import Image
+from PIL import Image
+from matplotlib import pyplot as plt
+
 from utils.utils import crop, resize
 
 
 def merge(saliency_map, predicted_rgb):
-    saliency_map_seg = np.copy(saliency_map)
+    saliency_map = np.squeeze(saliency_map) # saliency_map.shape = (1, 80, 160) 3D
+    saliency_map_seg = np.copy(saliency_map) # 对 saliency_map 的修改不会影响原始数组
+
     all_attention = road_attention = road_pixel = all_pixel = 0
     for x in range(saliency_map.shape[0]):
         for y in range(saliency_map.shape[1]):
@@ -34,21 +37,19 @@ def merge(saliency_map, predicted_rgb):
 
 
 if __name__ == '__main__':
+    root_path = pathlib.Path(__file__).parent.parent
+    # heatmap_type_list = ["smooth_grad", "raw_smooth_grad",
+    #                      "grad_cam_pp", "raw_grad_cam_pp",
+    #                      "faster_score_cam", "raw_faster_score_cam",
+    #                      "integrated_gradients", "raw_integrated_gradients", ]
+    heatmap_type_list = ["smooth_grad"]
 
-
-    # root_path =
-    heatmap_type_list = ["smooth_grad", "raw_smooth_grad",
-                         "grad_cam_pp", "raw_grad_cam_pp",
-                         "faster_score_cam", "raw_faster_score_cam",
-                         "integrated_gradients", "raw_integrated_gradients", ]
     focus_list = ["steer", "throttle"]
     focus = "steer"
-    track = "mountain"
-    # image_root = root_path/'perturbationdrive'/'logs'/'test' # CHANGE # TODO: Apply dynamic path for other .py
-    image_root = pathlib.Path("./perturbationdrive/logs/test") # CHANGE # TODO: Apply dynamic path for other .py
+    track = "lake"
+    image_root = root_path/'perturbationdrive'/'logs'/'test_seye'  # TODO: Apply dynamic path for other .py
 
     for folder_name in os.listdir(image_root):
-
         for heatmap_type in heatmap_type_list:
             # 读取 .npy 文件中所有图片的 heatmap_scores
             heatmap_dir = os.path.join(image_root, folder_name, f"{heatmap_type}_{focus}")
@@ -70,15 +71,24 @@ if __name__ == '__main__':
             # image with index "x" in data_csv corresponds to heatmap_scores[x+1]
             # iterate through all images with each one's segmented map and heatmap score
             for index, frameId in zip(data_csv["index"], data_csv["frameId"]):
-                print("Processing image: ", frameId)
+                # print("Processing image: ", frameId)
 
                 # segmentation_map
-                seg_img = Image.open(f"{image_root}/{folder_name}/image_logs/computed_segmentation_{track}_sun/computed_{frameId}.csv")
+                seg_img = Image.open(f"{image_root}/{folder_name}/image_logs/computed_segmentation_{track}_sun/computed_{frameId}.png")
                 # crop and resize for segmentation image
                 seg_img_crop = crop(np.array(seg_img))
                 seg_img_resize = resize(seg_img_crop)
 
                 saliency_map_seg, avg_road_attention, avg_all_attention, road_attention, all_attention = merge(heatmap_scores[index-1], seg_img_resize)
+
+                if all_attention == 0:
+                    print("all attention zero")
+                elif road_attention == 0:
+                    print("road attention zero")
+                elif avg_all_attention == 0:
+                    print("average attention zero")
+                elif avg_road_attention == 0:
+                    print("average road attention zero")
 
                 list_of_total_road_attention_ratio.append(road_attention / all_attention)
                 list_of_avg_road_attention_ratio.append(avg_road_attention / avg_all_attention)
@@ -101,18 +111,32 @@ if __name__ == '__main__':
             np.save(os.path.join(heatmap_dir, f"segment_avg_all_attention.npy"), list_of_avg_all_attention)
             np.save(os.path.join(heatmap_dir, f"segment_avg_road_attention_ratio.npy"), list_of_avg_road_attention_ratio)
             np.save(os.path.join(heatmap_dir, f"segment_total_road_attention_ratio.npy"), list_of_total_road_attention_ratio)
-            
-            data_csv["segment_road_attention"] = list_of_road_attention
-            data_csv["segment_all_attention"] = list_of_all_attention
-            data_csv["segment_avg_road_attention"] = list_of_avg_road_attention
-            data_csv["segment_avg_all_attention"] = list_of_avg_all_attention
-            data_csv["segment_avg_road_attention_ratio"] = list_of_avg_road_attention_ratio
-            data_csv["segment_total_road_attention_ratio"] = list_of_total_road_attention_ratio
-            
-            data_csv.to_csv(os.path.join(heatmap_dir, 'heatmap_log.csv'), index=False)
 
+            np.save(os.path.join(heatmap_dir, f"segment_average.npy"),
+                    avg_heatmaps_seg)
+            np.save(os.path.join(heatmap_dir, f"segment_average_gradient.npy"),
+                    avg_gradient_heatmaps_seg)
 
+            # data_csv["segment_road_attention"] = list_of_road_attention
+            # data_csv["segment_all_attention"] = list_of_all_attention
+            # data_csv["segment_avg_road_attention"] = list_of_avg_road_attention
+            # data_csv["segment_avg_all_attention"] = list_of_avg_all_attention
+            # data_csv["segment_avg_road_attention_ratio"] = list_of_avg_road_attention_ratio
+            # data_csv["segment_total_road_attention_ratio"] = list_of_total_road_attention_ratio
 
+            # data_csv.to_csv(os.path.join(heatmap_dir, 'heatmap_log.csv'), index=False)
+
+            plt.figure()
+            plt.hist(avg_heatmaps_seg)
+            plt.title("average attention seg_heatmaps")
+            plt.savefig(os.path.join(heatmap_dir, "segment_average.png"))
+            plt.close()
+
+            plt.figure()
+            plt.hist(avg_gradient_heatmaps_seg)
+            plt.title("average gradient attention seg_heatmaps")
+            plt.savefig(os.path.join(heatmap_dir, "segment_average_gradient.png"))
+            plt.close()
 
 
 
