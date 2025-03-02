@@ -83,7 +83,7 @@ def preprocess(image, debug = False):
         plt.imshow(image_nor)
         plt.title(str(round(image_nor.min(),2)) +  ","+ str(round(image_nor.max(),2)))
         plt.show()
-    return image_nor
+    return image_resize, image_nor
 
 def random_flip(image, steering_angle):
     """

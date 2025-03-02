@@ -46,7 +46,7 @@ class Generator(Sequence):
                 steering = steering_angle
                 # print(f"Loaded image shape: {image.shape}")
 
-            images[i] = preprocess(image)
+            _, images[i] = preprocess(image)
             # print(f"Preprocessed image shape: {images[i].shape}")
             steers[i] = steering
         output = np.stack((steers, speed), axis=1)

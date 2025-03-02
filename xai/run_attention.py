@@ -22,7 +22,7 @@ heatmap_method_list = ["smooth_grad", "raw_smooth_grad",
 if __name__ == '__main__':
 
     args["obj"] = "tracks"
-    args["track_index"] = 3
+    args["track_index"] = 1
     args["focus"] = "steer"
     args["mutate"] = False
 

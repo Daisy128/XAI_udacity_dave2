@@ -1,4 +1,6 @@
 import gc
+import logging
+
 import cv2
 import gym
 import traceback
@@ -434,6 +436,7 @@ class PerturbationDrive:
                             'collision': crash.get("collision"),
                             'low_speed': crash.get("low_speed"),
                             'is_crashed': crash.get("is_crashed"),
+                            # 'time': obs.time,
                         })
 
                     if crash.get("is_crashed"):

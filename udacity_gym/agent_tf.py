@@ -37,7 +37,7 @@ class SupervisedAgent_tf(UdacityAgent):
         obs = observation.input_image  # batch of images
 
         # print("Observations:", obs)
-        obs = preprocess(obs)
+        _, obs = preprocess(obs)
 
         #  the model expects 4D array
         obs = np.array([obs])

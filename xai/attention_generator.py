@@ -1,8 +1,8 @@
-from utils import utils
-import matplotlib.pyplot as plt
-import numpy as np
 import tensorflow as tf
 from PIL import Image
+import numpy as np
+from matplotlib import pyplot as plt
+from utils.utils import preprocess
 from tensorflow.keras.models import load_model
 from tf_keras_vis.saliency import Saliency
 from tf_keras_vis.gradcam_plus_plus import GradcamPlusPlus
@@ -167,13 +167,7 @@ if __name__ == '__main__':
 
     model = load_model("/home/jiaqq/Documents/ThirdEye-II/model/ckpts/ads/track1-steer-throttle.h5")
     img = Image.open("/home/jiaqq/Documents/ThirdEye-II/perturbationdrive/logs/lake/lake_static_smoke_filter_scale3_log/image_logs/computed_segmentation_lake_sun/computed_1.png")
-
-    from utils.utils import *
-    image = np.array(img)
-    image_crop = crop(image)
-    image_resize = resize(image_crop) # used for overlapped image
-    image_yuv = rgb2yuv(image_resize)
-    image_nor = normalize(image_yuv)
+    image_resize, image_nor = preprocess(img)
 
     generator = AttentionMapGenerator(model, focus="steer")
     score, prediction = generator.integrated_gradients(image_nor)

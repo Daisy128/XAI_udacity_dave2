@@ -21,7 +21,7 @@ simulator_infos = {
 perturb_cfgs = dict()
 perturb_cfgs['simulator'] = simulator_infos
 perturb_cfgs['visualize'] = True
-perturb_cfgs['max_scale'] = 6
+perturb_cfgs['max_scale'] = 8
 perturb_cfgs['image_height'] = 160
 perturb_cfgs['image_width'] = 320
 perturb_cfgs['low_speed_threshold'] = 0.01
@@ -31,7 +31,7 @@ perturb_cfgs['log_dir'] = os.path.join(perturb_cfgs['root_dir'], "logs")
 
 udacity_tracks = defaultdict(dict)
 udacity_tracks[1]['track_name'] = 'lake'
-udacity_tracks[1]['total_crash_limit'] = (3, 6)
+udacity_tracks[1]['total_crash_limit'] = (2, 6)
 udacity_tracks[1]['max_gap'] = 4
 udacity_tracks[3]['track_name'] = 'mountain'
 udacity_tracks[3]['total_crash_limit'] = (3, 10)

@@ -1,16 +1,27 @@
 import gc
 import os
 import pathlib
-
-from tqdm import tqdm
-
-from utils.utils import *
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from PIL import Image
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+from keras import backend as K
 from tensorflow.keras.models import load_model
+
 from utils.conf import roadGen_infos
+from utils.utils import preprocess
+
+
+def save_overlay_image(original_img, heatmap):
+    fig, ax = plt.subplots(figsize=(20, 10), dpi=100)  # dpi: high-resolution output
+    ax.imshow(original_img)
+    ax.imshow(heatmap, cmap='jet', alpha=0.4)
+    ax.axis('off')
+
+    fig.subplots_adjust(left=0, right=1, top=1, bottom=0)  # 去除 padding
+    plt.close(fig)
+
+    return fig
 
 
 class AttentionMapManager:
@@ -26,23 +37,6 @@ class AttentionMapManager:
             self.args['track_name'] = "mountain"
         else:
             raise ValueError("Invalid track index")
-
-    def save_overlay_image(self, original_img, heatmap):
-        fig, ax = plt.subplots(figsize=(20, 10), dpi=100)  # dpi: high-resolution output
-        ax.imshow(original_img)
-        ax.imshow(heatmap, cmap='jet', alpha=0.4)
-        ax.axis('off')
-        # # 关闭坐标轴和边界
-        # ax.set_xticks([])
-        # ax.set_yticks([])
-        # ax.set_frame_on(False)
-
-        # 直接匹配画布和图像尺寸
-        fig.subplots_adjust(left=0, right=1, top=1, bottom=0)  # 去除 padding
-        plt.close(fig)
-
-        return fig
-
 
     def compute_heatmap(self, folder_path, csv_filename):
 
@@ -61,13 +55,9 @@ class AttentionMapManager:
         list_of_image_paths = []
         prev_hm = np.zeros((80, 160), dtype=np.float32)
 
-        for frameId, img in tqdm(zip(data_df["frameId"], data_df["image_path"]), total=len(data_df)):
+        for frameId, img_path in tqdm(zip(data_df["frameId"], data_df["image_path"]), total=len(data_df)):
             # image preprocess
-            image = np.array(Image.open(img))
-            image_crop = crop(image)
-            image_resize = resize(image_crop)
-            image_yuv = rgb2yuv(image_resize)
-            image_nor = normalize(image_yuv)
+            image_resize, image_nor= preprocess(img_path)
 
             score, prediction = self.heatmap_function(image_nor)
             total_score.append(score)
@@ -90,7 +80,7 @@ class AttentionMapManager:
                 plt.close()
                 list_of_image_paths.append(heatmap_path)
 
-                fig = self.save_overlay_image(image_resize, heatmap)
+                fig = save_overlay_image(image_resize, heatmap)
                 fig.savefig(os.path.join(overlay_dir, f"overlay_{frameId}.png"))
 
         # saved as numpy arrays
@@ -102,13 +92,13 @@ class AttentionMapManager:
         plt.hist(avg_heatmaps)
         plt.title("average attention heatmaps")
         plt.savefig(os.path.join(heatmap_dir, "average_scores_hist.png"))
-        plt.clf()
+        plt.close()
 
         plt.figure()
         plt.hist(avg_gradient_heatmaps)
         plt.title("average gradient attention heatmaps")
         plt.savefig(os.path.join(heatmap_dir, "average_gradient_scores_hist.png"))
-        plt.clf()
+        plt.close()
 
         data_df[f'predicted_{self.args["focus"]}'] = predicts
         if self.save_images:
@@ -117,6 +107,7 @@ class AttentionMapManager:
         data_df.to_csv(os.path.join(heatmap_dir, 'heatmap_log.csv'), index=False)
 
         del avg_heatmaps, avg_gradient_heatmaps, list_of_image_paths, prev_hm
+        K.clear_session()
         gc.collect()
 
 
