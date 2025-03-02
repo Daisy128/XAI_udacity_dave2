@@ -153,6 +153,7 @@ if __name__ == '__main__':
     root_folder = f"perturbationdrive/logs/{track}"
 
     for folder_name in os.listdir(root_folder):
+        # if folder_name == "lake_normal":
         print("Running Segmentation on folder: ", folder_name)
 
         folder_path = os.path.join(root_folder, folder_name)
