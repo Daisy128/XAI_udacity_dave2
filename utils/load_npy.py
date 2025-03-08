@@ -1,10 +1,19 @@
+import pathlib
+
 import numpy as np
 import pandas as pd
 
-data = np.load("/home/jiaqq/Documents/ThirdEye-II/perturbationdrive/logs/lake/lake_rotate_image_scale3_log/saliency_heatmap_steering/average_gradient_scores.npy")
+if __name__ == '__main__':
 
-print("Data Shape:", data.shape)
-print("Data Type:", data.dtype)
+    npy_file = pathlib.Path("/home/jiaqq/Documents/ThirdEye-II/perturbationdrive/logs/lake/lake_glass_blur_scale7_log/smooth_grad_steer/"
+                   "segment_total_road_attention_ratio.npy")
 
-print(data)
-pd.DataFrame(data).to_csv("/home/jiaqq/Desktop/output.csv")
+    data = np.load(npy_file)
+    # data = data[~np.isnan(data)]
+    data = data[data!=0]
+    print("Data Shape:", data.shape)
+    print("Data Type:", data.dtype)
+
+    print(data)
+    # print(print(np.isnan(data).sum()) )
+    # pd.DataFrame(data).to_csv("/home/jiaqq/Desktop/output.csv")

@@ -5,8 +5,10 @@ from mutation.utils import properties
 
 def operator_change_labels(y_train, label=None, percentage=-1):
     if properties.model_type == 'regression':
+        if percentage == 0:
+            return y_train
         print("For regression model changes label percentage to:", percentage)
-        y_train_noisy = operator_add_noise_to_labels(y_train, int(percentage))
+        y_train_noisy = operator_add_noise_to_labels(y_train, percentage)
         return y_train_noisy
     else:
         # get the unique elements of the array with index and count information
@@ -73,6 +75,7 @@ def operator_make_output_classes_overlap(x_train, y_train, percentage=-1, label1
 
     y_train_overlapped = np.copy(y_train)
     if properties.model_type == 'regression':
+        print("For regression model changes label percentage to:", percentage)
         unique_label_list, unique_counts, unique_inverse = get_label_buckets(y_train)
     else:
         unique_label_list, unique_inverse, unique_counts = np.unique(y_train_overlapped, return_counts=True,

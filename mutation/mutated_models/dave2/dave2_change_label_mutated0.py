@@ -1,6 +1,16 @@
 
 import os
 from mutation.operators import activation_function_operators
+from mutation.operators import training_data_operators
+from mutation.operators import bias_operators
+from mutation.operators import weights_operators
+from mutation.operators import optimiser_operators
+from mutation.operators import dropout_operators, hyperparams_operators
+from mutation.operators import training_process_operators
+from mutation.operators import loss_operators
+from mutation.utils import mutation_utils
+from mutation.utils import properties
+from keras import optimizers
 import time
 import numpy as np
 import pandas as pd
@@ -80,6 +90,7 @@ def get_generators(x_train, x_test, y_train, y_test):
         (x_test, y_test) = shuffle(x_test, y_test, random_state=0)
     x_train: 'x_train'
     y_train: 'y_train'
+    y_train = training_data_operators.operator_change_labels(y_train, properties.change_label['change_label_label'], properties.change_label['change_label_pct'])
     train_generator = Generator(x_train, y_train, is_training=True, batch_size=Training_Configs['BATCH_SIZE'])
     val_generator = Generator(x_test, y_test, is_training=False, batch_size=Training_Configs['BATCH_SIZE'])
     return (train_generator, val_generator)
@@ -89,15 +100,14 @@ def train_model(model, x_train, x_test, y_train, y_test, model_name, track_index
     track_info = track_infos[track_index]
     current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
     if mutate_cfgs['do_mutate']:
-        model_folder = os.path.join(mutate_cfgs['mutate_dir'], ((((mutate_cfgs['mutate_func'] + '_') + mutate_cfgs['mutate_func_params']['type']) + '_') + "2_10"))
+        model_folder = os.path.join(mutate_cfgs['mutate_dir'], ((((mutate_cfgs['mutate_func'] + '_pct') + f"{mutate_cfgs['mutate_func_params']['change_label_pct']}"))))
         default_prefix_name = f"track{track_index}-{model_name}-{mutate_cfgs['mutate_func']}"
     else:
         model_folder = Training_Configs['model_dir']
         default_prefix_name = f'track{track_index}-{model_name}'
     name = CHECKPOINT_DIR.joinpath(model_folder, (default_prefix_name + '-{epoch:03d}.h5'))
     checkpoint = ModelCheckpoint(name, monitor='val_loss', verbose=0, save_best_only=False, mode='auto')
-    early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=10, mode='auto')
-    model = activation_function_operators.operator_change_activation_function(model)
+    early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=5, mode='auto')
     model.compile(loss='mean_squared_error', optimizer=Adam(lr=Training_Configs['LEARNING_RATE']))
     (train_generator, val_generator) = get_generators(x_train, x_test, y_train, y_test)
     history = model.fit(train_generator, validation_data=val_generator, epochs=Training_Configs['EPOCHS'], callbacks=[checkpoint, early_stop], verbose=1)

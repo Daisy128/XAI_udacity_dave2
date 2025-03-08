@@ -1,3 +1,4 @@
+import glob
 import pathlib
 import shutil
 import os
@@ -15,12 +16,21 @@ def delete_folder(folder_path):
     else:
         print(f"文件夹 '{folder_path}' 不存在。")
 
-heatmap_list = ["Faster-ScoreCAM_0", "Faster-ScoreCAM_overlay_0", "GradCAM++_0", "GradCAM++_overlay_0", "saliency_heatmap_overlay_steering", "saliency_heatmap_overlay_throttle", "saliency_heatmap_steering", "saliency_heatmap_throttle"]
+heatmap_list = ["smooth_grad_steer", "raw_smooth_grad_steer",
+                "integrated_gradients_steer", "raw_integrated_gradients_steer",
+                "grad_cam_pp_steer", "raw_grad_cam_pp_steer",
+                "faster_score_cam_steer", "raw_faster_score_cam_steer"]
 
 if __name__ == "__main__":
     root_path = pathlib.Path("/home/jiaqq/Documents/ThirdEye-II/perturbationdrive/logs/lake")
-    for heatmap in heatmap_list:
-        for folder_name in os.listdir(root_path):
-            folder_path = os.path.join(root_path, folder_name)
-            folder_to_delete = os.path.join(folder_path, heatmap)
-            print(folder_to_delete)# delete_folder(folder_to_delete)
+    for perturb_folder in os.listdir(root_path):
+        perturb_path = os.path.join(root_path, perturb_folder)
+        for folder_name in os.listdir(perturb_path):
+            folder_path = os.path.join(perturb_path, folder_name)
+            heatmap_files = glob.glob(os.path.join(folder_path, "segment_*"))
+
+            for file in heatmap_files:
+                os.remove(file)
+            # folder_to_delete = os.path.join(folder_path, heatmap)
+            # print(folder_to_delete)# delete_folder(folder_to_delete)
+            # delete_folder(folder_to_delete)

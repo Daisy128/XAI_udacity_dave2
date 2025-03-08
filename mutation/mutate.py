@@ -1,5 +1,6 @@
 from mutation.utils.mutation_utils import *
 import mutation.utils.constants as const
+# import mutation.utils.execute_mutants as exc
 from mutation.utils.logger_setup import setup_logger
 
 def mutate_model(data):
@@ -46,3 +47,7 @@ def mutate_model(data):
 
         logger.info("Finished mutation %s", mutation)
 
+    # # 运行原始模型, 将测试结果保存到results_path
+    # exc.execute_original_model(file_path, results_path)
+    # # 运行变异后的模型，测试它们的表现
+    # exc.execute_mutants(mutants_path, mutations)

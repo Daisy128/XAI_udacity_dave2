@@ -16,9 +16,9 @@ if __name__ == "__main__":
 
 
     # 设置目录路径
-    root_directory = '/home/jiaqq/Documents/ThirdEye-II/perturbationdrive/logs/lake/'
-    old_string = "IntegratedGradients"
-    new_string = "integrated_gradients"
+    root_directory = '/home/jiaqq/Documents/ThirdEye-II/mutation/logs/lake/'
+    old_string = "saliency_heatmap_steering"
+    new_string = "smooth_grad_steer"
     to_rename = []
     csv_files = []
 

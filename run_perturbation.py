@@ -23,12 +23,14 @@ if __name__ == '__main__':
 
     if object_name == "udacity_tracks":
 
-        config['model_name'] = "track1-steer-throttle.h5"
-        config['model_path'] = os.path.join("./model/ckpts/ads", config['model_name'])
+        # config['model_name'] = "track3-steer-throttle.h5"
+        # config['model_path'] = os.path.join("./model/ckpts/ads", config['model_name'])
         config['perturbations'] = ['cutout_filter']
         config['track_index'] = 1
         config['start_scale'] = 0
-        perturb_cfgs['perturb'] = True
+        perturb_cfgs['perturb'] = False
+        config['model_name'] = "track1_mutated_model_final.h5"
+        config['model_path'] = os.path.join("./model/ckpts/ads/", config['model_name'])
 
         from perturbationdrive.utils.perturb_conf import udacity_tracks
         # perturbed_simulate(config)

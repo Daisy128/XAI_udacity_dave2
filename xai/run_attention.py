@@ -22,9 +22,10 @@ heatmap_method_list = ["smooth_grad", "raw_smooth_grad",
 if __name__ == '__main__':
 
     args["obj"] = "tracks"
-    args["track_index"] = 1
-    args["focus"] = "steer"
-    args["mutate"] = False
+    args["track_index"] = 3
+    args["focus"] = "throttle"
+    args["mutate"] = False # True for generating heatmaps on mutation and False for perturbation
+
 
     model = load_model(track_infos[args['track_index']]["model_path"])
     print("model loaded from: ", track_infos[args['track_index']]["model_path"])
@@ -38,9 +39,9 @@ if __name__ == '__main__':
         heatmap_config = dict()
         heatmap_config["args"] = args
         heatmap_config["heatmap_function"] = getattr(heatmap_generator, args["function_name"])
-        heatmap_config["save_images"] = False
+        heatmap_config["save_images"] = False # True for generating visual images and overlay images, False for saving numpy scores only
 
-        attention_manager = AttentionMapManager(heatmap_config = heatmap_config)
+        attention_manager = AttentionMapManager(heatmap_config = heatmap_config, heatmap_generator = heatmap_generator)
 
         attention_manager.run_heatmap()
 

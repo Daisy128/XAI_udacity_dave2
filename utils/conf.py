@@ -72,13 +72,15 @@ model_cfgs['num_outputs'] = 2 # when we wish to predict steering and throttle:
 
 mutate_cfgs = dict()
 mutate_cfgs['image_height'] = 160
-mutate_cfgs['do_mutate'] = True
-# mutate_cfgs['mutate_dir'] = "ads-mutation"
-# mutate_cfgs['mutate_func'] = "add_weights_regularisation"
-# mutate_cfgs['mutate_func_params'] = {"type": "l1_l2", "layer": "6"}
+mutate_cfgs['do_mutate'] = False
+# for add_weights_regularisation
 mutate_cfgs['mutate_dir'] = "ads-mutation"
-mutate_cfgs['mutate_func'] = "change_loss_function"
-mutate_cfgs['mutate_func_params'] = {"type": "tanh", "layer": "6", "dropout_rate": "0.125", "change_label_pct": "10", "new_loss_function": "mean_absolute_error"}
+mutate_cfgs['mutate_func'] = "change_label"
+mutate_cfgs['mutate_func_params'] = {"make_output_classes_overlap": "-1", "weights_regularisation": "l1_l2", "layer": "6", "dropout_rate": "0.125", "change_label_pct": 0, "new_activation_function": "tanh" ,"new_loss_function": "mean_absolute_error", "new_learning_rate": 0.00001}
+# for change_loss_function
+# mutate_cfgs['mutate_dir'] = "ads-mutation"
+# mutate_cfgs['mutate_func'] = "change_loss_function"
+# mutate_cfgs['mutate_func_params'] = {"type": "tanh", "layer": "6", "dropout_rate": "0.125", "change_label_pct": "10", "new_loss_function": "mean_absolute_error"}
 
 class Conf:
     def __init__(self):

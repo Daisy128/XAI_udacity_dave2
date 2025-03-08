@@ -123,7 +123,7 @@ change_batch_size = {
 
 change_learning_rate = {
     "name": 'change_learning_rate',
-    "learning_rate_udp": 0.01,
+    "learning_rate_udp": mutate_cfgs["mutate_func_params"]["new_learning_rate"],
     "pct": -1,
     "bs_lower_bound": 1.0,
     "bs_upper_bound": 0.001,
@@ -145,7 +145,7 @@ disable_batching = {
 
 change_activation_function = {
     "name": 'change_activation_function',
-    "activation_function_udp": mutate_cfgs["mutate_func_params"]["type"],
+    "activation_function_udp": mutate_cfgs["mutate_func_params"]["new_activation_function"],
     "layer_udp": 6,
     "runs_number": 10,
     "annotation_params": [],
@@ -264,8 +264,7 @@ change_dropout_rate = {
 
 add_weights_regularisation = {
     "name": 'add_weights_regularisation',
-    # "weights_regularisation_udp": getattr(keras.regularizers, mutate_cfgs["mutate_func_params"]["type"])(0.01),
-    "weights_regularisation_udp": l2(),
+    "weights_regularisation_udp": getattr(keras.regularizers, mutate_cfgs["mutate_func_params"]["weights_regularisation"])(),
     "layer_udp": 3,
     "runs_number": 10,
     "annotation_params": [],

@@ -1,16 +1,6 @@
 
 import os
-from mutation.operators import activation_function_operators
-from mutation.operators import training_data_operators
-from mutation.operators import bias_operators
 from mutation.operators import weights_operators
-from mutation.operators import optimiser_operators
-from mutation.operators import dropout_operators, hyperparams_operators
-from mutation.operators import training_process_operators
-from mutation.operators import loss_operators
-from mutation.utils import mutation_utils
-from mutation.utils import properties
-from keras import optimizers
 import time
 import numpy as np
 import pandas as pd
@@ -99,7 +89,7 @@ def train_model(model, x_train, x_test, y_train, y_test, model_name, track_index
     track_info = track_infos[track_index]
     current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
     if mutate_cfgs['do_mutate']:
-        model_folder = os.path.join(mutate_cfgs['mutate_dir'], ((((mutate_cfgs['mutate_func'] + '_') + mutate_cfgs['mutate_func_params']['type']) + '_') + mutate_cfgs['mutate_func_params']['layer']))
+        model_folder = os.path.join(mutate_cfgs['mutate_dir'], ((((mutate_cfgs['mutate_func'] + '_') + mutate_cfgs['mutate_func_params']['weights_regularisation']) + '_') + mutate_cfgs['mutate_func_params']['layer']))
         default_prefix_name = f"track{track_index}-{model_name}-{mutate_cfgs['mutate_func']}"
     else:
         model_folder = Training_Configs['model_dir']
@@ -137,7 +127,7 @@ def train_model(model, x_train, x_test, y_train, y_test, model_name, track_index
 def main():
     '\n    Load train/validation data_nominal set and train the model\n    '
     np.random.seed(0)
-    track_index = 1
+    track_index = 3
     MODEL_NAME = 'dave2'
     (x_train, x_test, y_train, y_test) = load_data(track_index)
     model = build_model(MODEL_NAME, num_outputs=2)

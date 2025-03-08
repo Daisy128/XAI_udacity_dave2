@@ -3,6 +3,7 @@ import os
 import pathlib
 import numpy as np
 import pandas as pd
+from PIL import Image
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from keras import backend as K
@@ -10,6 +11,7 @@ from tensorflow.keras.models import load_model
 
 from utils.conf import roadGen_infos
 from utils.utils import preprocess
+from xai.attention_generator import AttentionMapGenerator
 
 
 def save_overlay_image(original_img, heatmap):
@@ -26,10 +28,11 @@ def save_overlay_image(original_img, heatmap):
 
 class AttentionMapManager:
 
-    def __init__(self, heatmap_config: dict):
+    def __init__(self, heatmap_config: dict, heatmap_generator: AttentionMapGenerator):
         self.args = heatmap_config['args']
         self.heatmap_function = heatmap_config['heatmap_function']
         self.save_images = heatmap_config['save_images']
+        self.heatmap_generator = heatmap_generator
 
         if self.args['track_index'] == 1:
             self.args['track_name'] = "lake"
@@ -57,9 +60,12 @@ class AttentionMapManager:
 
         for frameId, img_path in tqdm(zip(data_df["frameId"], data_df["image_path"]), total=len(data_df)):
             # image preprocess
-            image_resize, image_nor= preprocess(img_path)
+            img = Image.open(img_path)
+            image_resize, image_nor= preprocess(img)
 
+            # Run heatmap generation
             score, prediction = self.heatmap_function(image_nor)
+
             total_score.append(score)
             predicts.append(prediction)
 
@@ -89,12 +95,14 @@ class AttentionMapManager:
         np.save(os.path.join(heatmap_dir, f"{self.args['function_name']}_average_gradient_scores.npy"), avg_gradient_heatmaps)
 
         plt.figure()
+        # avg_heatmaps = np.nan_to_num(avg_heatmaps, nan=0)  # Replace NaN with 0
         plt.hist(avg_heatmaps)
         plt.title("average attention heatmaps")
         plt.savefig(os.path.join(heatmap_dir, "average_scores_hist.png"))
         plt.close()
 
         plt.figure()
+        # avg_gradient_heatmaps = np.nan_to_num(avg_gradient_heatmaps, nan=0)  # Replace NaN with 0
         plt.hist(avg_gradient_heatmaps)
         plt.title("average gradient attention heatmaps")
         plt.savefig(os.path.join(heatmap_dir, "average_gradient_scores_hist.png"))
@@ -137,8 +145,8 @@ class AttentionMapManager:
                     csv_filename = os.path.join(folder_path, f"{folder_name}.csv")
                     print("Computing heatmap on model: ", csv_filename, " ...")
                     self.compute_heatmap(folder_path, csv_filename)
-            # else:
-            #     print("Heatmap for folder: ", folder_name, " already exists. Skipping.")
+            else:
+                print("Heatmap for folder: ", folder_name, " already exists. Skipping.")
 
     def run_heatmap_roadGen(self):
         root_folder = f"perturbationdrive/logs/{roadGen_infos['track_name']}"
@@ -160,13 +168,22 @@ class AttentionMapManager:
 
         # folder_name == lake_add_weights_regularisation_l1_6_log
         for folder_name in sorted(os.listdir(root_folder)):
-            print("Generating attention map on folder: ", folder_name)
             # mutation/logs/lake/lake_add_weights_regularisation_l1_6_log
             folder_path = os.path.join(root_folder, folder_name)
-            csv_filename = os.path.join(folder_path, f"{folder_name}.csv")
-            if os.path.exists(csv_filename):
-                df = pd.read_csv(csv_filename)
-                model = load_model(df.at[1, "model"])
-                print("Computing heatmap on model: ", model, " ...")
+            # mutation/logs/lake/lake_add_weights_regularisation_l1_6_log/smooth_grad_steer
+            heatmap_folder = os.path.join(folder_path, f"{self.args['function_name']}_{self.args['focus']}")
 
-                self.compute_heatmap(folder_path, csv_filename)
+            if not os.path.isdir(heatmap_folder):
+                print("Generating attention map on folder: ", folder_name)
+                # mutation/logs/lake/lake_add_weights_regularisation_l1_6_log/*.csv
+                csv_filename = os.path.join(folder_path, f"{folder_name}.csv")
+                if os.path.exists(csv_filename):
+                    df = pd.read_csv(csv_filename)
+                    model = load_model(df.at[1, "model"])
+                    # 在此处更新generate heatmap时会用到的model
+                    self.heatmap_generator.model = model
+                    print("Computing heatmap on model: ", df.at[1, "model"], " ...")
+                    self.compute_heatmap(folder_path, csv_filename)
+
+            else:
+                print(self.args['function_name'], "for folder:", folder_name, "already exists. Skipping.")

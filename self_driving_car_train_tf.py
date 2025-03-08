@@ -42,7 +42,7 @@ def load_data(track_index):
             csv_path = os.path.join(track_info['training_data_dir'],
                                 drive_style,
                                 'driving_log.csv')
-            
+
             data_df = pd.read_csv(csv_path, header=0)
             if list(data_df.columns) != column_name:
                 data_df.columns = column_name
@@ -86,10 +86,10 @@ def load_data(track_index):
 
     # Now concatenate along axis=1 to stack them side by side
     y = np.concatenate((y_steering, y_throttle), axis=1)
-    
+
     try:
         x_train, x_test, y_train, y_test= train_test_split(x, y, test_size=Training_Configs['TEST_SIZE'], random_state=0)
-        
+
     except TypeError:
         print("Missing header to csv files")
         exit()
@@ -135,12 +135,12 @@ def train_model(model, x_train, x_test, y_train, y_test, model_name, track_index
         default_prefix_name = f'track{track_index}-{model_name}'
 
     name = CHECKPOINT_DIR.joinpath(model_folder, default_prefix_name + '-{epoch:03d}.h5')
-    
+
     checkpoint = ModelCheckpoint(
         name,
         monitor='val_loss',
         verbose=0,
-        save_best_only=False,
+        save_best_only=True,
         mode='auto')
 
     early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
@@ -158,7 +158,7 @@ def train_model(model, x_train, x_test, y_train, y_test, model_name, track_index
     #     #     if 'conv' in layer.name:
     #     #         layer.trainable = True
     #
-    model.compile(loss='mean_squared_error', optimizer=Adam(lr=Training_Configs['LEARNING_RATE']))
+    model.compile(loss='mse', optimizer=Adam(lr=Training_Configs['LEARNING_RATE']), metrics=["acc"])
     train_generator, val_generator = get_generators(x_train, x_test, y_train, y_test)
 
     #reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-6, verbose=1)
@@ -183,7 +183,7 @@ def train_model(model, x_train, x_test, y_train, y_test, model_name, track_index
     plot_path =CHECKPOINT_DIR.joinpath(model_folder, 'history_'+model_name, plot_name)
     plt.savefig(plot_path)
     plt.show()
-    
+
     # store the data into history.csv
     hist_df = pd.DataFrame(history.history)
     hist_df['time'] = current_time
@@ -196,7 +196,7 @@ def train_model(model, x_train, x_test, y_train, y_test, model_name, track_index
                                 f"random_shadow: {Training_Configs['AUG']['RANDOM_SHADOW']}, "
                                 f"random_brightness: {Training_Configs['AUG']['RANDOM_BRIGHTNESS']}"
                             )    # can be changed in each train, for detailed description
-    
+
     hist_df.loc[1:, ['description']] = np.nan # put value only to the first row of the file
 
     hist_csv_file = CHECKPOINT_DIR.joinpath(model_folder, "history_" + model_name,
@@ -221,7 +221,7 @@ def main():
 
     # ===========select track and model to train==========
     track_index = 1
-    MODEL_NAME = "dave2" # "epoch", "chauffeur", "dave2", "vit"
+    MODEL_NAME = "epoch" # "epoch", "chauffeur", "dave2", "vit"
 
     x_train, x_test, y_train, y_test = load_data(track_index)
     model = build_model(MODEL_NAME, num_outputs=2)
