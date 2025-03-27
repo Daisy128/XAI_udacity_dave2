@@ -63,17 +63,18 @@ def merge(saliency_map, predicted_rgb, debug=False):
 
 
 if __name__ == '__main__':
-    root_path = pathlib.Path(__file__).parent.parent
+
     heatmap_type_list = ["smooth_grad","raw_smooth_grad",
                          "grad_cam_pp", "raw_grad_cam_pp",
                          "faster_score_cam", "raw_faster_score_cam",
                          "integrated_gradients", "raw_integrated_gradients", ]
-    # heatmap_type_list = ["integrated_gradients", "raw_integrated_gradients"]
+    # heatmap_type_list = ["grad_cam_pp"]#, "raw_grad_cam_pp"]
 
     focus_list = ["steer", "throttle"]
-    focus = "throttle"
     track = "mountain"
-    image_root = root_path/'perturbationdrive'/'logs'/track  # TODO: Apply dynamic path for other .py
+    focus = "throttle"
+    root_path = pathlib.Path("/home/jiaqq/Documents/ThirdEye-II")  # "/home/jiaqq/Documents/ThirdEye-II" or "/data/ThirdEye-II"
+    image_root = root_path/'mutation'/'logs'/track  # TODO: Apply dynamic path for other .py
 
     for folder_name in os.listdir(image_root):
         for heatmap_type in heatmap_type_list:

@@ -28,6 +28,7 @@ class SupervisedAgent_tf(UdacityAgent):
         assert os.path.exists(model_path), 'Model path {} not found'.format(model_path)
 
         self.model = load_model(model_path)
+        print("Loading model from:", model_path)
         self.predict_throttle = predict_throttle
         self.max_speed = max_speed
         self.min_speed = min_speed

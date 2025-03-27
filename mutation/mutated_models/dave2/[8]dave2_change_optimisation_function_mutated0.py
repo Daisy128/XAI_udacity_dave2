@@ -12,6 +12,7 @@ from mutation.utils import mutation_utils
 from mutation.utils import properties
 from keras import optimizers
 import time
+import csv
 import numpy as np
 import pandas as pd
 import tensorflow as tf
@@ -20,11 +21,19 @@ from sklearn.utils import shuffle
 from datetime import timedelta, datetime
 from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
+from tensorflow.keras.models import load_model
 from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau
-from utils.conf import track_infos, CHECKPOINT_DIR, Training_Configs, model_cfgs, mutate_cfgs
+from tensorflow.python.ops.gen_experimental_dataset_ops import csv_dataset
+from utils.conf import track_infos, CHECKPOINT_DIR, Training_Configs, mutate_cfgs
 from model.lane_keeping.self_driving_car_batch_generator import Generator
 from model.lane_keeping.lane_keeping_models_tf import build_model
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+print(tf.test.is_gpu_available())
+with tf.device('/GPU:0'):
+    print('TensorFlow 运行在 GPU！')
+from tensorflow.keras import mixed_precision
+policy = mixed_precision.Policy('mixed_float16')
+mixed_precision.set_global_policy(policy)
+print('✅ Mixed Precision 已启用:', policy)
 
 def load_data(track_index):
     '\n    Load training data_nominal and split it into training and validation set\n    '
@@ -39,6 +48,7 @@ def load_data(track_index):
     for drive_style in driving_styles:
         try:
             csv_path = os.path.join(track_info['training_data_dir'], drive_style, 'driving_log.csv')
+            print(('Loading training set from' + csv_path))
             data_df = pd.read_csv(csv_path, header=0)
             if (list(data_df.columns) != column_name):
                 data_df.columns = column_name
@@ -84,33 +94,31 @@ def load_data(track_index):
     print(f'Test set: {len(x_test)} elements')
     return (x_train, x_test, y_train, y_test)
 
-def get_generators(x_train, x_test, y_train, y_test):
-    if Training_Configs['SHUFFLE_DATA']:
-        (x_train, y_train) = shuffle(x_train, y_train, random_state=0)
-        (x_test, y_test) = shuffle(x_test, y_test, random_state=0)
-    x_train: 'x_train'
-    y_train: 'y_train'
-    y_train = training_data_operators.operator_change_labels(y_train, properties.change_label['change_label_label'], properties.change_label['change_label_pct'])
-    train_generator = Generator(x_train, y_train, is_training=True, batch_size=Training_Configs['BATCH_SIZE'])
-    val_generator = Generator(x_test, y_test, is_training=False, batch_size=Training_Configs['BATCH_SIZE'])
-    return (train_generator, val_generator)
-
 def train_model(model, x_train, x_test, y_train, y_test, model_name, track_index):
     '\n    Train the self-driving car model\n    '
     track_info = track_infos[track_index]
     current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
-    if mutate_cfgs['do_mutate']:
-        model_folder = os.path.join(mutate_cfgs['mutate_dir'], ((((mutate_cfgs['mutate_func'] + '_pct') + f"{mutate_cfgs['mutate_func_params']['change_label_pct']}"))))
-        default_prefix_name = f"track{track_index}-{model_name}-{mutate_cfgs['mutate_func']}"
-    else:
-        model_folder = Training_Configs['model_dir']
-        default_prefix_name = f'track{track_index}-{model_name}'
+    model_folder = os.path.join(mutate_cfgs['mutate_dir'], ('change_optimisation_function_' + mutate_cfgs['mutate_func_params']['new_optimisation_function']))
+    default_prefix_name = f"track{track_index}-{model_name}-{mutate_cfgs['mutate_func']}"
     name = CHECKPOINT_DIR.joinpath(model_folder, (default_prefix_name + '-{epoch:03d}.h5'))
-    checkpoint = ModelCheckpoint(name, monitor='val_loss', verbose=0, save_best_only=False, mode='auto')
-    early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=5, mode='auto')
-    model.compile(loss='mean_squared_error', optimizer=Adam(lr=Training_Configs['LEARNING_RATE']))
-    (train_generator, val_generator) = get_generators(x_train, x_test, y_train, y_test)
-    history = model.fit(train_generator, validation_data=val_generator, epochs=Training_Configs['EPOCHS'], callbacks=[checkpoint, early_stop], verbose=1)
+    checkpoint = ModelCheckpoint(name, monitor='val_loss', verbose=0, save_best_only=True, mode='auto')
+    early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=2, mode='auto')
+    model.compile(optimizer=optimiser_operators.operator_change_optimisation_function(Adam(lr=0.0001)), loss='mse', metrics=['acc'])
+    if Training_Configs['SHUFFLE_DATA']:
+        (x_train, y_train) = shuffle(x_train, y_train, random_state=0)
+        (x_test, y_test) = shuffle(x_test, y_test, random_state=0)
+    train_generator = Generator(x_train, y_train, is_training=True, batch_size=Training_Configs['BATCH_SIZE'])
+    val_generator = Generator(x_test, y_test, False, batch_size=Training_Configs['BATCH_SIZE'])
+    with tf.device('/GPU:0'):
+        history = model.fit(train_generator,
+                            validation_data=val_generator,
+                            epochs=Training_Configs['EPOCHS'],
+                            # callbacks=[checkpoint, early_stop, reduce_lr], # callback with reducing lr
+                            callbacks=[checkpoint, early_stop],  # callback
+                            verbose=1,
+                            workers=10,
+                            # use_multiprocessing=True,
+                            max_queue_size=32)
     plt.plot(history.history['loss'])
     plt.plot(history.history['val_loss'])
     plt.title('model loss')

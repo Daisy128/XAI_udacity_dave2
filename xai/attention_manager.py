@@ -1,23 +1,28 @@
 import gc
 import os
 import pathlib
+import cv2
 import numpy as np
 import pandas as pd
 from PIL import Image
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import torch
+from concurrent.futures import ThreadPoolExecutor
 from keras import backend as K
 from tensorflow.keras.models import load_model
 
 from utils.conf import roadGen_infos
-from utils.utils import preprocess
+from utils.utils import preprocess, normalize, resize
 from xai.attention_generator import AttentionMapGenerator
 
 
-def save_overlay_image(original_img, heatmap):
+def save_overlay_image(image_resize, heatmap):
     fig, ax = plt.subplots(figsize=(20, 10), dpi=100)  # dpi: high-resolution output
-    ax.imshow(original_img)
-    ax.imshow(heatmap, cmap='jet', alpha=0.4)
+    ax.imshow(image_resize)
+    h, w, _ = np.array(image_resize).shape
+    resized_heatmap = cv2.resize(heatmap, (w, h))
+    ax.imshow(resized_heatmap, cmap='jet', alpha=0.4)
     ax.axis('off')
 
     fig.subplots_adjust(left=0, right=1, top=1, bottom=0)  # 去除 padding
@@ -61,14 +66,19 @@ class AttentionMapManager:
         for frameId, img_path in tqdm(zip(data_df["frameId"], data_df["image_path"]), total=len(data_df)):
             # image preprocess
             img = Image.open(img_path)
-            image_resize, image_nor= preprocess(img)
+            if self.args["obj"] == "tracks":
+                image_resize, image= preprocess(img)
+            elif self.args["obj"] == "roadGen":
+                image = np.array(img, dtype=np.float32)
+            else:
+                raise ValueError("Invalid obj")
 
             # Run heatmap generation
-            score, prediction = self.heatmap_function(image_nor)
-
+            score, prediction = self.heatmap_function(image)
             total_score.append(score)
             predicts.append(prediction)
 
+            # print("Score has shape: ", score.shape)
             gradient = abs(prev_hm - score) if frameId != 1 else 0
             average = np.average(score)
             average_gradient = np.average(gradient)
@@ -124,6 +134,8 @@ class AttentionMapManager:
             self.run_heatmap_on_mutation_tracks()
         elif self.args["obj"] == "tracks":
             self.run_heatmap_tracks()
+        elif self.args["mutate"] and self.args["obj"] == "roadGen":
+            self.run_heatmap_on_mutation_roadGen()
         elif self.args["obj"] == "roadGen":
             self.run_heatmap_roadGen()
         else:
@@ -131,8 +143,8 @@ class AttentionMapManager:
 
     def run_heatmap_tracks(self):
         # for testing
-        # root_folder = f"perturbationdrive/logs/{self.args['track_name']}/lake"
-        root_folder = f"perturbationdrive/logs/{self.args['track_name']}"
+        root_folder = f"perturbationdrive/logs/{self.args['track_name']}/lake"
+        # root_folder = pathlib.Path(f"/data/ThirdEye-II/perturbationdrive/logs/{self.args['track_name']}")
         for folder_name in os.listdir(root_folder):
             heatmap_folder = os.path.join(root_folder, folder_name, f"{self.args['function_name']}_{self.args['focus']}")
             if not os.path.isdir(heatmap_folder):
@@ -148,20 +160,52 @@ class AttentionMapManager:
             else:
                 print("Heatmap for folder: ", folder_name, " already exists. Skipping.")
 
-    def run_heatmap_roadGen(self):
-        root_folder = f"perturbationdrive/logs/{roadGen_infos['track_name']}"
+    def run_heatmap_on_mutation_roadGen(self):
+        root_folder = pathlib.Path(f"mutation/logs/RoadGenerator")
 
+        # folder_name == add_weights_regularisation_l1_6_log
         for folder_name in sorted(os.listdir(root_folder)):
             print("Generating attention map on folder: ", folder_name)
             parent_dir = os.path.join(root_folder, folder_name)
 
-            for scaled_folder in sorted(os.listdir(parent_dir)):
-                folder_path = os.path.join(parent_dir, scaled_folder)
-                print("Generating attention map on folder: ", scaled_folder)
+            for scaled_folder in sorted(os.listdir(parent_dir)): # roadGen_cutout_filter_road0_scale0_log
+                heatmap_folder = os.path.join(parent_dir, scaled_folder,
+                                              f"{self.args['function_name']}_{self.args['focus']}")
+                if not os.path.isdir(heatmap_folder):
+                    folder_path = os.path.join(parent_dir, scaled_folder)
+                    print("Generating ", self.args['function_name'], " map on folder: ", scaled_folder)
 
-                if os.path.isdir(folder_path):
-                    csv_filename = os.path.join(folder_path, f"{scaled_folder}.csv")
-                    self.compute_heatmap(folder_path, csv_filename)
+                    if os.path.isdir(folder_path):
+                        csv_filename = os.path.join(folder_path, f"{scaled_folder}.csv")
+                        if os.path.exists(csv_filename):
+                            df = pd.read_csv(csv_filename)
+                            model = load_model(df.at[1, "model"], compile=False)
+                            self.heatmap_generator.model = model
+                            print("Computing heatmap on model: ", df.at[1, "model"], " ...")
+                            self.compute_heatmap(folder_path, csv_filename)
+                else:
+                    print("Heatmap for folder: ", scaled_folder, " already exists. Skipping.")
+
+
+    def run_heatmap_roadGen(self):
+        root_folder = f"perturbationdrive/logs/{roadGen_infos['track_name']}" # logs/RoadGenerator
+
+        for folder_name in sorted(os.listdir(root_folder)): # cutout_filter
+            print("Generating attention map on folder: ", folder_name)
+            parent_dir = os.path.join(root_folder, folder_name)
+
+            for scaled_folder in sorted(os.listdir(parent_dir)): # roadGen_cutout_filter_road0_scale0_log
+                heatmap_folder = os.path.join(parent_dir, scaled_folder,
+                                              f"{self.args['function_name']}_{self.args['focus']}")
+                if not os.path.isdir(heatmap_folder):
+                    folder_path = os.path.join(parent_dir, scaled_folder)
+                    print("Generating attention map on folder: ", scaled_folder)
+
+                    if os.path.isdir(folder_path):
+                        csv_filename = os.path.join(folder_path, f"{scaled_folder}.csv")
+                        self.compute_heatmap(folder_path, csv_filename)
+                else:
+                    print("Heatmap for folder: ", scaled_folder, " already exists. Skipping.")
 
     def run_heatmap_on_mutation_tracks(self):
         root_folder = pathlib.Path(f"mutation/logs/{self.args['track_name']}")
@@ -179,7 +223,7 @@ class AttentionMapManager:
                 csv_filename = os.path.join(folder_path, f"{folder_name}.csv")
                 if os.path.exists(csv_filename):
                     df = pd.read_csv(csv_filename)
-                    model = load_model(df.at[1, "model"])
+                    model = load_model(df.at[1, "model"], compile=False)
                     # 在此处更新generate heatmap时会用到的model
                     self.heatmap_generator.model = model
                     print("Computing heatmap on model: ", df.at[1, "model"], " ...")

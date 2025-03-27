@@ -84,6 +84,10 @@ class AttentionMapGenerator:
         attributions = np.abs(explanation.attributions[0])
         # attributions = explanation.attributions[0]
         # attributions = attributions.clip(0, 1)
+        # print("Attributions shape before normalization:", attributions.shape)
+        if attributions.shape[-1] == 3:
+            attributions = np.mean(attributions, axis=-1, keepdims=True)
+            attributions = np.squeeze(attributions)
 
         # normalization
         try:
@@ -154,6 +158,10 @@ class AttentionMapGenerator:
                                  baselines=0,
                                  target=0)
         attributions = np.abs(explanation.attributions[0])
+
+        if attributions.shape[-1] == 3:
+            attributions = np.mean(attributions, axis=-1, keepdims=True)
+            attributions = np.squeeze(attributions)
 
         return attributions, prediction
 

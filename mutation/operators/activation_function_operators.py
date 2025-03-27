@@ -27,7 +27,7 @@ def operator_change_activation_function(model):
     print("Length of tmp is: ", len(tmp['layers']))
     # print("Changing AF of layer" + str(current_index))
     # for current_index in range(len(tmp['layers'])): # change the first 4 layers which has activation, actually layer 2 and layer 4
-    for current_index in range(11): # change the first 4 layers which has activation, actually layer 2 and layer 4
+    for current_index in range(4, 9): # change the first 4 layers which has activation, actually layer 2 and layer 4
         print(f"Layer {current_index}: {tmp['layers'][current_index]['config']}")
         if tmp['layers'][current_index]['config'].get('activation') and tmp['layers'][current_index]['config']['activation'] != "linear":
             if props.change_activation_function["activation_function_udp"] is not None:
@@ -45,6 +45,7 @@ def operator_change_activation_function(model):
             print("Current Index: "+ str(current_index))
             print("New Act Function:" + new_act_func)
             tmp['layers'][current_index]['config']['activation'] = new_act_func
+            print(f"Layer {current_index} activation has been changed to: {tmp['layers'][current_index]['config']}")
         # else:
         #     raise Exception(str(current_index),
         #                                "Not possible to apply the add activation function mutation to layer ")

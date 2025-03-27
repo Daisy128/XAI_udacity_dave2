@@ -35,6 +35,7 @@ def build_model(model_name, num_outputs=2):
     show_model_summary(model)
     return model
 
+
 def create_dave2_model(num_outputs):
     """
     this model is inspired by the NVIDIA paper
@@ -47,7 +48,7 @@ def create_dave2_model(num_outputs):
 
     img_in = Input(shape=(row, col, ch), name="img_in")
     x = img_in
-    x = Lambda(lambda x: x / 255.0)(x)
+    # x = Lambda(lambda x: x / 255.0)(x)
     x = Conv2D(24, (5, 5), strides=(2, 2), activation="relu", name="conv2d_1")(x)
     x = Dropout(drop)(x)
     x = Conv2D(32, (5, 5), strides=(2, 2), activation="relu", name="conv2d_2")(x)
@@ -69,10 +70,9 @@ def create_dave2_model(num_outputs):
     outputs.append(Dense(num_outputs, activation="linear", name="steering_throttle")(x))
 
     model = Model(inputs=[img_in], outputs=outputs)
-    # opt = Adam(lr=0.0001)
-    # model.compile(optimizer=opt, loss="mse", metrics=["acc"])
-    return model
 
+    # model.compile(optimizer=Adam(lr=0.0001), loss="mse", metrics=["acc"])
+    return model
 
 def create_epoch_model(num_outputs):
     # https://github.com/udacity/self-driving-car/blob/master/steering-models/community-models/cg23/epoch_model.py
@@ -99,7 +99,7 @@ def create_epoch_model(num_outputs):
     y = Dense(num_outputs)(y)
 
     model = Model(inputs=img_input, outputs=y)
-    model.compile(optimizer=Adam(lr=1e-4), loss="mse", metrics=["acc"])
+    model.compile(optimizer=Adam(learning_rate=1e-4), loss="mse", metrics=["acc"])
 
     return model
 
@@ -173,4 +173,44 @@ def create_chauffeur_model(num_outputs):
     )
     optimizer = "adadelta" if use_adadelta else SGD(lr=learning_rate, momentum=0.9)
     model.compile(loss="mse", optimizer=optimizer, metrics=["acc"])
+    return model
+
+
+
+def get_nvidia_model(num_outputs):
+    """
+    this model is inspired by the NVIDIA paper
+    https://images.nvidia.com/content/tegra/automotive/images/2016/solutions/pdf/end-to-end-dl-using-px.pdf
+    Activation is RELU
+    """
+    row, col, ch = 160, 320, 3
+
+    drop = 0.1
+
+    img_in = Input(shape=(row, col, ch), name="img_in")
+    x = img_in
+    x = Lambda(lambda x: x / 255.0)(x)
+    x = Conv2D(24, (5, 5), strides=(2, 2), activation="relu", name="conv2d_1")(x)
+    x = Dropout(drop)(x)
+    x = Conv2D(32, (5, 5), strides=(2, 2), activation="relu", name="conv2d_2")(x)
+    x = Dropout(drop)(x)
+    x = Conv2D(64, (5, 5), strides=(2, 2), activation="relu", name="conv2d_3")(x)
+    x = Dropout(drop)(x)
+    x = Conv2D(64, (3, 3), strides=(1, 1), activation="relu", name="conv2d_4")(x)
+    x = Dropout(drop)(x)
+    x = Conv2D(64, (3, 3), strides=(1, 1), activation="relu", name="conv2d_5")(x)
+    x = Dropout(drop)(x)
+
+    x = Flatten(name="flattened")(x)
+    x = Dense(100, activation="relu")(x)
+    # x = Dropout(drop)(x)
+    x = Dense(50, activation="relu")(x)
+    # x = Dropout(drop)(x)
+
+    outputs = []
+    outputs.append(Dense(num_outputs, activation="linear", name="steering_throttle")(x))
+
+    model = Model(inputs=[img_in], outputs=outputs)
+    opt = Adam(lr=0.0001)
+    model.compile(optimizer=opt, loss="mse", metrics=["acc"])
     return model

@@ -3,7 +3,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # only warning 和 error
 
 from utils.conf import *
 from tensorflow.keras.models import load_model
-from attention_manager import AttentionMapManager
+from xai.attention_manager import AttentionMapManager
 from xai.attention_generator import AttentionMapGenerator
 
 args = {
@@ -14,21 +14,25 @@ args = {
     "mutate": False
 }
 
-heatmap_method_list = ["smooth_grad", "raw_smooth_grad",
-                       "grad_cam_pp", "raw_grad_cam_pp",
+heatmap_method_list = ["raw_grad_cam_pp", "grad_cam_pp",
                        "faster_score_cam", "raw_faster_score_cam",
-                       "integrated_gradients", "raw_integrated_gradients", ]
+                       "integrated_gradients", "raw_integrated_gradients",
+                       "smooth_grad", "raw_smooth_grad",]
 
 if __name__ == '__main__':
 
-    args["obj"] = "tracks"
-    args["track_index"] = 3
-    args["focus"] = "throttle"
-    args["mutate"] = False # True for generating heatmaps on mutation and False for perturbation
+    args["obj"] = "roadGen" # "tracks" or "roadGen"
+    args["track_index"] = 3 # if "roadGen" then not used
+    args["focus"] = "steer"
+    args["mutate"] = True # True for generating heatmaps on mutation and False for perturbation
 
-
-    model = load_model(track_infos[args['track_index']]["model_path"])
-    print("model loaded from: ", track_infos[args['track_index']]["model_path"])
+    if args["obj"] == "tracks":
+        model = load_model(track_infos[args['track_index']]["model_path"])
+        # model = load_model("/home/jiaqq/Documents/ThirdEye-II/model/ckpts/ads-mutation/change_activation_function_exponential_2-6/track1_lake/track1-dave2-change_activation_function-20250315_152542-final.h5")
+        print("model loaded from: ", track_infos[args['track_index']]["model_path"])
+    elif args["obj"] == "roadGen":
+        model = load_model(roadGen_infos['model_path'])
+        print("model loaded from: ", roadGen_infos['model_path'])
 
     for heatmap_function in heatmap_method_list:
         print("Start generating heatmap: ", heatmap_function)

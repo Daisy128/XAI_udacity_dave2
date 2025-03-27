@@ -13,8 +13,8 @@ data = {
 if __name__ == '__main__':
 
     data['subject_name'] = 'dave2'
-    data['subject_path'] = os.path.join('self_driving_car_train_tf.py')
-    data['mutations'] = ["make_output_classes_overlap"]
+    data['subject_path'] = os.path.join('train_dave2_roadGen.py') #('self_driving_car_train_tf.py')
+    data['mutations'] = ["change_activation_function"]
 
     run_deepcrime_tool(data)
 

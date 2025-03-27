@@ -1,22 +1,33 @@
 import os
 import time
+import csv
+
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 import matplotlib.pyplot as plt
+
 from sklearn.utils import shuffle
 from datetime import timedelta, datetime
 from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
+from tensorflow.keras.models import load_model
 from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau
+from tensorflow.python.ops.gen_experimental_dataset_ops import csv_dataset
 
-from utils.conf import track_infos, CHECKPOINT_DIR, Training_Configs, model_cfgs, mutate_cfgs
+from utils.conf import track_infos, CHECKPOINT_DIR, Training_Configs
 from model.lane_keeping.self_driving_car_batch_generator import Generator
 from model.lane_keeping.lane_keeping_models_tf import build_model
 
 # use cpu for debug
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+print(tf.test.is_gpu_available())
+with tf.device('/GPU:0'):
+    print("TensorFlow 运行在 GPU！")
+from tensorflow.keras import mixed_precision
+policy = mixed_precision.Policy('mixed_float16')
+mixed_precision.set_global_policy(policy)
+print("✅ Mixed Precision 已启用:", policy)
 
 def load_data(track_index):
     """
@@ -40,8 +51,9 @@ def load_data(track_index):
     for drive_style in driving_styles:
         try:
             csv_path = os.path.join(track_info['training_data_dir'],
-                                drive_style,
-                                'driving_log.csv')
+                                    drive_style,
+                                    'driving_log.csv')
+            print("Loading training set from" + csv_path)
 
             data_df = pd.read_csv(csv_path, header=0)
             if list(data_df.columns) != column_name:
@@ -49,7 +61,7 @@ def load_data(track_index):
 
             if Training_Configs['AUG']['USE_LEFT_RIGHT']:
                 y_throttle_center = data_df['throttle'].values
-                y_throttle_left = y_throttle_center / 1.2   # adjust the speed for manual input
+                y_throttle_left = y_throttle_center / 1.2  # adjust the speed for manual input
                 y_throttle_right = y_throttle_center / 1.2
 
                 y_center = data_df['steering'].values
@@ -73,7 +85,7 @@ def load_data(track_index):
                 y_throttle_list.append(y_throttle_center)
 
         except FileNotFoundError:
-            print("Unable to read file %s" %csv_path)
+            print("Unable to read file %s" % csv_path)
             continue
 
     if not x_list:
@@ -88,7 +100,8 @@ def load_data(track_index):
     y = np.concatenate((y_steering, y_throttle), axis=1)
 
     try:
-        x_train, x_test, y_train, y_test= train_test_split(x, y, test_size=Training_Configs['TEST_SIZE'], random_state=0)
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=Training_Configs['TEST_SIZE'],
+                                                            random_state=0)
 
     except TypeError:
         print("Missing header to csv files")
@@ -103,19 +116,6 @@ def load_data(track_index):
 
     return x_train, x_test, y_train, y_test
 
-def get_generators(x_train, x_test, y_train, y_test):
-
-    if Training_Configs['SHUFFLE_DATA']:
-        x_train, y_train = shuffle(x_train, y_train, random_state=0)
-        x_test, y_test = shuffle(x_test, y_test, random_state=0)
-
-    x_train: 'x_train'
-    y_train: 'y_train'
-
-    train_generator = Generator(x_train, y_train, is_training = True, batch_size=Training_Configs['BATCH_SIZE'])
-    val_generator = Generator(x_test, y_test, is_training = False, batch_size=Training_Configs['BATCH_SIZE']) # False: not apply augmentation
-
-    return train_generator, val_generator
 
 def train_model(model, x_train, x_test, y_train, y_test, model_name, track_index):
     """
@@ -124,17 +124,9 @@ def train_model(model, x_train, x_test, y_train, y_test, model_name, track_index
     track_info = track_infos[track_index]
     current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
 
-    # model_folder: ads/ ads-mutation(/add_weights_regularization)
-    # model_name: track1-dave2-00x.h5/track1-dave2-add_weights_regularization-001.h5
-    if mutate_cfgs['do_mutate']:
-        model_folder = os.path.join(mutate_cfgs['mutate_dir'],
-                                    mutate_cfgs["mutate_func"]+ "_" + mutate_cfgs["mutate_func_params"]["type"]+ "_" + mutate_cfgs["mutate_func_params"]["layer"])
-        default_prefix_name = f'track{track_index}-{model_name}-{mutate_cfgs["mutate_func"]}'
-    else:
-        model_folder = Training_Configs['model_dir']
-        default_prefix_name = f'track{track_index}-{model_name}'
+    default_prefix_name = os.path.join(f'track{track_index}' + '-' + model_name)
 
-    name = CHECKPOINT_DIR.joinpath(model_folder, default_prefix_name + '-{epoch:03d}.h5')
+    name = CHECKPOINT_DIR.joinpath('ads', default_prefix_name + '-{epoch:03d}.h5')
 
     checkpoint = ModelCheckpoint(
         name,
@@ -144,13 +136,13 @@ def train_model(model, x_train, x_test, y_train, y_test, model_name, track_index
         mode='auto')
 
     early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
-                                               min_delta=.0001,
-                                               patience=10, #
-                                               mode='auto') # loss -> mode= 'min'
+                                                  min_delta=.0001,
+                                                  patience=2,  #
+                                                  mode='auto')  # loss -> mode= 'min'
 
     # These are configured in lane_keeping_models_tf.py
     # if Training_Configs['WITH_BASE']:
-    #     track_path = CHECKPOINT_DIR.joinpath(model_folder, Training_Configs['BASE_MODEL'])
+    #     track_path = CHECKPOINT_DIR.joinpath('ads', Training_Configs['BASE_MODEL'])
     #     assert os.path.exists(track_path), 'Model path {} not found'.format(track_path)
     #     model.load_weights(track_path)
     #
@@ -158,17 +150,33 @@ def train_model(model, x_train, x_test, y_train, y_test, model_name, track_index
     #     #     if 'conv' in layer.name:
     #     #         layer.trainable = True
     #
-    model.compile(loss='mse', optimizer=Adam(lr=Training_Configs['LEARNING_RATE']), metrics=["acc"])
-    train_generator, val_generator = get_generators(x_train, x_test, y_train, y_test)
+    # model.compile(loss='mean_squared_error', optimizer=Adam(lr=Training_Configs['LEARNING_RATE']))
 
-    #reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-6, verbose=1)
+    # reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-6, verbose=1)
+    model.compile(optimizer=Adam(lr=0.0001), loss="mse", metrics=["acc"])
 
-    history = model.fit(train_generator,
-                        validation_data=val_generator,
-                        epochs=Training_Configs['EPOCHS'],
-                        #callbacks=[checkpoint, early_stop, reduce_lr], # callback with reducing lr
-                        callbacks=[checkpoint, early_stop], #callback
-                        verbose=1)
+    if Training_Configs['SHUFFLE_DATA']:
+        x_train, y_train = shuffle(x_train, y_train, random_state=0)
+        x_test, y_test = shuffle(x_test, y_test, random_state=0)
+
+    train_generator = Generator(x_train, y_train, is_training=True, batch_size=Training_Configs['BATCH_SIZE'])
+    val_generator = Generator(x_test, y_test, False,
+                              batch_size=Training_Configs['BATCH_SIZE'])  # False: not apply augmentation
+    val_generator.workers = 8
+
+    start = time.time()
+    with tf.device('/GPU:0'):
+        history = model.fit(train_generator,
+                            validation_data=val_generator,
+                            epochs=Training_Configs['EPOCHS'],
+                            # callbacks=[checkpoint, early_stop, reduce_lr], # callback with reducing lr
+                            callbacks=[checkpoint, early_stop],  # callback
+                            verbose=1,
+                            workers=10,
+                            # use_multiprocessing=True,
+                            max_queue_size=32)
+    end = time.time()
+    print(f"⏳ 训练时间: {end - start:.2f} 秒")
 
     # summarize history for loss
     plt.plot(history.history['loss'])
@@ -178,9 +186,9 @@ def train_model(model, x_train, x_test, y_train, y_test, model_name, track_index
     plt.xlabel('epoch')
     plt.legend(['train', 'val'], loc='upper left')
 
-    CHECKPOINT_DIR.joinpath(model_folder, 'history_'+model_name).mkdir(parents=True, exist_ok=True)
+    CHECKPOINT_DIR.joinpath('ads', 'history_' + model_name).mkdir(parents=True, exist_ok=True)
     plot_name = f'{default_prefix_name}_{current_time}.png'
-    plot_path =CHECKPOINT_DIR.joinpath(model_folder, 'history_'+model_name, plot_name)
+    plot_path = CHECKPOINT_DIR.joinpath('ads', 'history_' + model_name, plot_name)
     plt.savefig(plot_path)
     plt.show()
 
@@ -189,23 +197,23 @@ def train_model(model, x_train, x_test, y_train, y_test, model_name, track_index
     hist_df['time'] = current_time
     hist_df['plot'] = plot_name
     hist_df['description'] = (
-                                f"data: {track_info['driving_style']}, "
-                                f"use_left_right: {Training_Configs['AUG']['USE_LEFT_RIGHT']}"
-                                f"random_flip: {Training_Configs['AUG']['RANDOM_FLIP'] }, "
-                                f"random_translate: {Training_Configs['AUG']['RANDOM_TRANSLATE'] }, "
-                                f"random_shadow: {Training_Configs['AUG']['RANDOM_SHADOW']}, "
-                                f"random_brightness: {Training_Configs['AUG']['RANDOM_BRIGHTNESS']}"
-                            )    # can be changed in each train, for detailed description
+        f"data: {track_info['driving_style']}, "
+        f"use_left_right: {Training_Configs['AUG']['USE_LEFT_RIGHT']}"
+        f"random_flip: {Training_Configs['AUG']['RANDOM_FLIP']}, "
+        f"random_translate: {Training_Configs['AUG']['RANDOM_TRANSLATE']}, "
+        f"random_shadow: {Training_Configs['AUG']['RANDOM_SHADOW']}, "
+        f"random_brightness: {Training_Configs['AUG']['RANDOM_BRIGHTNESS']}"
+    )  # can be changed in each train, for detailed description
 
-    hist_df.loc[1:, ['description']] = np.nan # put value only to the first row of the file
+    hist_df.loc[1:, ['description']] = np.nan  # put value only to the first row of the file
 
-    hist_csv_file = CHECKPOINT_DIR.joinpath(model_folder, "history_" + model_name,
+    hist_csv_file = CHECKPOINT_DIR.joinpath('ads', "history_" + model_name,
                                             default_prefix_name + '-' + current_time + '-history.csv')
 
     with open(hist_csv_file, mode='w') as f:
         hist_df.to_csv(f, index=False)
 
-    final_model = CHECKPOINT_DIR.joinpath(model_folder,
+    final_model = CHECKPOINT_DIR.joinpath('ads',
                                           f'track{track_index}_{track_info["track_name"]}',
                                           default_prefix_name + "-" + current_time + '-final.h5')
     model.save(final_model)
@@ -217,11 +225,11 @@ def main():
     """
     Load train/validation data_nominal set and train the model
     """
-    np.random.seed(0) # 0 means can be any number
+    np.random.seed(0)  # 0 means can be any number
 
     # ===========select track and model to train==========
-    track_index = 1
-    MODEL_NAME = "epoch" # "epoch", "chauffeur", "dave2", "vit"
+    track_index = 3
+    MODEL_NAME = "dave2"  # "epoch", "chauffeur", "dave2", "vit"
 
     x_train, x_test, y_train, y_test = load_data(track_index)
     model = build_model(MODEL_NAME, num_outputs=2)

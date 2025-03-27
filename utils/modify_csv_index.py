@@ -1,36 +1,39 @@
 import os
 import csv
+import pathlib
 from pathlib import Path
 import pandas as pd
 
 if __name__ == '__main__':
 
-    root_path = '/home/jiaqq/Documents/ThirdEye-II/mutation/logs/lake/'
+    root_path = pathlib.Path('/home/jiaqq/Documents/ThirdEye-II/perturbationdrive/logs/RoadGenerator')
 
-    for root, dirs, files in os.walk(root_path, topdown=False):
-        for file in files:
-            if file.endswith('.csv'):
-                csv = os.path.join(root, file)
-                data_df = pd.read_csv(csv)
+    for perturb_type in os.listdir(root_path):
+        perturb_path = os.path.join(root_path, perturb_type)
+        for root, dirs, files in os.walk(perturb_path, topdown=False):
+            for file in files:
+                if file.endswith('.csv'):
+                    csv = os.path.join(root, file)
+                    data_df = pd.read_csv(csv)
 
-                # add index column
-                if 'frameId' not in data_df.columns:
-                    data_df.rename(columns={'index': 'frameId'}, inplace=True)
-                    # data_df['frameId'] = data_df['image_path'].apply(lambda x: x.split('/')[-1].split('.')[0])
-                    data_df['index'] = range(1, len(data_df) + 1)
+                    # add index column
+                    if 'frameId' not in data_df.columns:
+                        data_df.rename(columns={'index': 'frameId'}, inplace=True)
+                        # data_df['frameId'] = data_df['image_path'].apply(lambda x: x.split('/')[-1].split('.')[0])
+                        data_df['index'] = range(1, len(data_df) + 1)
 
-                    columns = ['index'] + [col for col in data_df.columns if col != 'index']
-                    data_df = data_df[columns]
+                        columns = ['index'] + [col for col in data_df.columns if col != 'index']
+                        data_df = data_df[columns]
 
-                    data_df.set_index('index', inplace=True)
+                        data_df.set_index('index', inplace=True)
 
-                    data_df.to_csv(csv)
-                    print("File: "+ csv + " has been modified")
+                        data_df.to_csv(csv)
+                        print("File: "+ csv + " has been modified")
 
-                # delete 'Unnamed: 0' column
-                if 'Unnamed: 0' in data_df.columns:
-                    data_df = data_df.drop(columns=['Unnamed: 0'])
+                    # delete 'Unnamed: 0' column
+                    if 'Unnamed: 0' in data_df.columns:
+                        data_df = data_df.drop(columns=['Unnamed: 0'])
 
-                    data_df.to_csv(csv, index=False)
-                    print("File: " + csv + " has been modified")
+                        data_df.to_csv(csv, index=False)
+                        print("File: " + csv + " has been modified")
 

@@ -14,6 +14,7 @@ def operator_change_learning_rate(optimiser):
 
     if props.change_learning_rate["learning_rate_udp"]:
         new_lr = props.change_learning_rate["learning_rate_udp"]
+        print("Learning rate changed to {}".format(new_lr))
     else:
         new_lr = props.change_learning_rate["pct"]
 

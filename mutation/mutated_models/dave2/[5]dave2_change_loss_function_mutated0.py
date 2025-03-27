@@ -1,6 +1,5 @@
-
 import os
-from mutation.operators import weights_operators
+from mutation.operators import loss_operators
 import time
 import numpy as np
 import pandas as pd
@@ -14,7 +13,14 @@ from tensorflow.keras.callbacks import ModelCheckpoint, ReduceLROnPlateau
 from utils.conf import track_infos, CHECKPOINT_DIR, Training_Configs, model_cfgs, mutate_cfgs
 from model.lane_keeping.self_driving_car_batch_generator import Generator
 from model.lane_keeping.lane_keeping_models_tf import build_model
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+print(tf.test.is_gpu_available())
+with tf.device('/GPU:0'):
+    print("TensorFlow 运行在 GPU！")
+from tensorflow.keras import mixed_precision
+policy = mixed_precision.Policy('mixed_float16')
+mixed_precision.set_global_policy(policy)
+print("✅ Mixed Precision 已启用:", policy)
 
 def load_data(track_index):
     '\n    Load training data_nominal and split it into training and validation set\n    '
@@ -88,19 +94,28 @@ def train_model(model, x_train, x_test, y_train, y_test, model_name, track_index
     '\n    Train the self-driving car model\n    '
     track_info = track_infos[track_index]
     current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
-    if mutate_cfgs['do_mutate']:
-        model_folder = os.path.join(mutate_cfgs['mutate_dir'], ((((mutate_cfgs['mutate_func'] + '_') + mutate_cfgs['mutate_func_params']['weights_regularisation']) + '_') + mutate_cfgs['mutate_func_params']['layer']))
-        default_prefix_name = f"track{track_index}-{model_name}-{mutate_cfgs['mutate_func']}"
-    else:
-        model_folder = Training_Configs['model_dir']
-        default_prefix_name = f'track{track_index}-{model_name}'
+    model_folder = os.path.join(mutate_cfgs['mutate_dir'], ('change_loss_function_' + mutate_cfgs['mutate_func_params']['new_loss_function']))
+    default_prefix_name = f"track{track_index}-{model_name}-{mutate_cfgs['mutate_func']}"
     name = CHECKPOINT_DIR.joinpath(model_folder, (default_prefix_name + '-{epoch:03d}.h5'))
-    checkpoint = ModelCheckpoint(name, monitor='val_loss', verbose=0, save_best_only=False, mode='auto')
-    early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=10, mode='auto')
-    model = weights_operators.operator_add_weights_regularisation(model)
-    model.compile(loss='mean_squared_error', optimizer=Adam(lr=Training_Configs['LEARNING_RATE']))
+    checkpoint = ModelCheckpoint(name, monitor='val_loss', verbose=0, save_best_only=True, mode='auto')
+    early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=2, mode='auto')
+    model.compile(loss=loss_operators.operator_change_loss_function(mutate_cfgs['mutate_func_params']['new_loss_function']), optimizer=Adam(lr=Training_Configs['LEARNING_RATE']))
     (train_generator, val_generator) = get_generators(x_train, x_test, y_train, y_test)
-    history = model.fit(train_generator, validation_data=val_generator, epochs=Training_Configs['EPOCHS'], callbacks=[checkpoint, early_stop], verbose=1)
+
+    start = time.time()
+    with tf.device('/GPU:0'):
+        history = model.fit(train_generator,
+                            validation_data=val_generator,
+                            epochs=Training_Configs['EPOCHS'],
+                            # callbacks=[checkpoint, early_stop, reduce_lr], # callback with reducing lr
+                            callbacks=[checkpoint, early_stop],  # callback
+                            verbose=1,
+                            workers=10,
+                            # use_multiprocessing=True,
+                            max_queue_size=32)
+    end = time.time()
+    print(f"⏳ 训练时间: {end - start:.2f} 秒")
+
     plt.plot(history.history['loss'])
     plt.plot(history.history['val_loss'])
     plt.title('model loss')
@@ -126,8 +141,13 @@ def train_model(model, x_train, x_test, y_train, y_test, model_name, track_index
 
 def main():
     '\n    Load train/validation data_nominal set and train the model\n    '
+    # os.chdir(os.getcwd())
+    # import sys
+    # track_index = sys.argv[1]  # 第一个参数
+    # print(f"Received value: {track_index}")
+
     np.random.seed(0)
-    track_index = 3
+    track_index = 1
     MODEL_NAME = 'dave2'
     (x_train, x_test, y_train, y_test) = load_data(track_index)
     model = build_model(MODEL_NAME, num_outputs=2)

@@ -132,9 +132,7 @@ class UdacitySimulator:
 
 
 from multiprocessing import Manager
-
 manager = Manager()
-
 simulator_state = manager.dict()
 simulator_state['observation'] = None
 simulator_state['action'] = UdacityAction(0.0, 0.0)

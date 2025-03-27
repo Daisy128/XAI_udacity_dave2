@@ -1,3 +1,4 @@
+import copy
 import gc
 import logging
 
@@ -31,7 +32,7 @@ class PerturbationDrive:
         self,
         simulator: Union[PerturbationSimulator, UdacitySimulator],
         agent: Union[ADS, UdacityAgent],
-        model_name: str = None,
+        model_path: str = None,
         perturbation_functions: List[str] = None,
         attention_map: Dict = {},
         image_size: Tuple[int, int] = (160, 320),
@@ -43,7 +44,7 @@ class PerturbationDrive:
     ):
         self.simulator = simulator
         self.agent = agent
-        self.model_name = model_name
+        self.model_path = model_path
         self.perturbation_functions = perturbation_functions
         self.attention_map = attention_map
         self.image_size = image_size
@@ -81,10 +82,10 @@ class PerturbationDrive:
             image_perturbation = None
 
         scale = self.start_scale
-
+        perturbation_list = copy.deepcopy(self.perturbation_functions)
         # set up simulator
         self.simulator.connect()
-        time.sleep(1)
+        # time.sleep(1)
 
         # set up initial road
         waypoints = None
@@ -95,8 +96,7 @@ class PerturbationDrive:
 
         # grid search loop
         while True:
-            perturbation = self.perturbation_functions[0]
-
+            perturbation = perturbation_list[0]
             log_name = f"roadGen_{perturbation}_road{road_number}_scale{scale}_log.csv"
             log_path = os.path.join(configs['log_dir'], f"{perturbation}/roadGen_{perturbation}_road{road_number}_scale{scale}_log")
             image_folder = os.path.join(log_path, "image_logs")
@@ -119,11 +119,11 @@ class PerturbationDrive:
             )
 
             if isSuccess: # no crashed in this turn, so iterate into the next scale_level
-                self.logger.info(f"No crash in current scale: {scale}, increasing scale.")
+                # self.logger.info(f"No crash in current scale: {scale}, increasing scale.")
                 scale += 1
 
             else:
-                if len(temporary_images) > 50: # crash happens in current scale, record the image and data, jump out to the next perturbation
+                if len(temporary_images) > 100: # crash happens in current scale, record the image and data, jump out to the next perturbation
                     os.makedirs(image_folder, exist_ok=True)
                     save_data_in_batch(log_name, log_path, data, temporary_images)
 
@@ -131,12 +131,12 @@ class PerturbationDrive:
                     self.logger.info("Driving performance bad, too short! Data is not saving!")
 
                 scale = self.start_scale
-                self.perturbation_functions.remove(perturbation)
-                if len(self.perturbation_functions) == 0:
+                perturbation_list.remove(perturbation)
+                if len(perturbation_list) == 0:
                     break
                 data.clear()
                 temporary_images.clear()
-                time.sleep(2)
+                # time.sleep(2)
                 self.logger.info("Data has been cleared!")
 
             if scale > self.max_scale:
@@ -211,7 +211,7 @@ class PerturbationDrive:
                     timeout = True
                     break
                 #obs.shape=(160, 320, 3)
-                if obs.shape[:2] != (height, width) :
+                if obs.shape[:2] != (height, width):
                     obs = cv2.resize(obs, (width, height), cv2.INTER_NEAREST)
                 original_image_list.append(obs)
 
@@ -240,13 +240,17 @@ class PerturbationDrive:
                     if  current_waypoint_index < len(waypoint_list):
                         current_waypoint = waypoint_list[current_waypoint_index]
                     x, y = current_waypoint
-                    steering,throttle , dist, angl_diff,angle = waypoint_controller.calculate_control(x, y, info["pos"], rotation)
+                    steering, throttle, dist, angl_diff,angle = waypoint_controller.calculate_control(x, y, info["pos"], rotation)
 
                 if done:
-                    if once:  # one additional iteration
-                        once = False
-                    else:  # Exit the loop after the "extra once"
-                        break
+                    break
+                    # if once:  # one additional iteration
+                    #     once = False
+                    # else:  # Exit the loop after the "extra once"
+                    #     break
+
+                # agent makes a move, the agent also selects the dtype and adds a batch dimension
+                actions = self.agent.action(image)
 
                 data.append({
                     'frameId': counter,
@@ -256,14 +260,13 @@ class PerturbationDrive:
                     'scale': perturbation_scale,
                     'image_path': image_path,
                     'speed': info['speed'],
-                    'steer': steering,
-                    'throttle': throttle,
+                    'steer': actions[0][0].numpy(),
+                    'throttle': actions[0][1].numpy(),
                     'cte': dist,
-                    'is_crashed': done
+                    'is_crashed': done,
+                    'steer_is_same': steering,
+                    'throttle_is_same': throttle,
                 })
-
-                # agent makes a move, the agent also selects the dtype and adds a batch dimension
-                actions = self.agent.action(image)
 
                 # clip action to avoid out of bound errors
                 if isinstance(client.action_space, gym.spaces.Box):
@@ -358,8 +361,8 @@ class PerturbationDrive:
                 if monitor:
                     monitor.display_waiting_screen()
 
-                log_name = f"{track_name}_{perturbation}_scale{scale}_log.csv"
-                log_path = os.path.join(log_dir, f"{track_name}/{track_name}_{perturbation}_scale{scale}_log")
+                log_name = f"{track_name}_{perturbation}.csv" #_scale{scale}_log.csv"
+                log_path = os.path.join(log_dir, f"{track_name}/{track_name}_{perturbation}") # _scale{scale}_log")
                 image_folder = os.path.join(log_path, "image_logs")
 
                 data = []
@@ -392,7 +395,7 @@ class PerturbationDrive:
 
                     last_obs = obs
                     obs, reward, terminated, truncated, crash, info = env.step(actions)
-                    # self.logger.info(obs.throttle,"   ,", obs.speed)
+                    print("Throttle is: ", obs.throttle, "Speed is: ", obs.speed)
                     if skip_frames > 0:
                         skip_frames -= 1
 
@@ -402,11 +405,15 @@ class PerturbationDrive:
                     else:
                         low_speed_count = 0
 
-                    # 连续20帧速度过低（小于0.001）则算作throttle prediction failure
+                    print("low speed sum: ", low_speed_count)
+
+                    # 连续30帧速度过低（小于6）则算作throttle prediction failure
                     if low_speed_count >= low_speed_limit:
                         self.logger.info("ADS speed too low! Quit and going to next scale level")
-                        crash["low_speed"] += 1
-                        keep_running = False
+                        if obs.sector >= 5:
+                            crash["low_speed"] += 1
+                            crash["is_crashed"] = True
+                            keep_running = False
 
                     # Simulator未检测出的crash
                     if frame > 1 and abs(reward - prev_cte) > max_gap and crash["is_crashed"] != True and prev_is_crashed != True:
@@ -421,7 +428,7 @@ class PerturbationDrive:
                         data.append({
                             'frameId': frame,
                             'track': track_name,
-                            'model': self.model_name,
+                            'model': self.model_path,
                             'perturb_name': perturbation,
                             'scale': scale,
                             'image_path': image_path,
@@ -436,7 +443,7 @@ class PerturbationDrive:
                             'collision': crash.get("collision"),
                             'low_speed': crash.get("low_speed"),
                             'is_crashed': crash.get("is_crashed"),
-                            # 'time': obs.time,
+                            'time': obs.time,
                         })
 
                     if crash.get("is_crashed"):

@@ -1,3 +1,4 @@
+import concurrent.futures
 import os
 
 import numpy as np
@@ -6,12 +7,13 @@ from tensorflow.keras.utils import Sequence
 from utils.conf import model_cfgs, Training_Configs
 from utils.utils import load_image, augment, preprocess
 
+
 class Generator(Sequence):
 
     def __init__(self, path_to_pictures, output, is_training, batch_size):
         self.path_to_pictures = path_to_pictures
-        self.steering_angles = output[:,0]
-        self.speed = output[:,1]
+        self.steering_angles = output[:, 0]
+        self.speed = output[:, 1]
         self.is_training = is_training
         self.batch_size = batch_size
 
@@ -21,17 +23,19 @@ class Generator(Sequence):
         batch_paths = self.path_to_pictures[start_index:end_index]
         steering_angles = self.steering_angles[start_index:end_index]
         speed = self.speed[start_index:end_index]
-        
+
         # print(f"Batch paths: {batch_paths}")
         # print(f"Steering angles: {steering_angles}")
 
-        images = np.empty([len(batch_paths), model_cfgs['resized_image_height'], model_cfgs['resized_image_width'], model_cfgs['image_depth']])
-        steers = np.empty([len(batch_paths)])
-        
+        images = np.zeros([len(batch_paths), model_cfgs['resized_image_height'], model_cfgs['resized_image_width'],
+                           model_cfgs['image_depth']])
+        steers = np.zeros([len(batch_paths)])
+
         # print(f"Initialized images array with shape: {images.shape}")
         # print(f"Initialized steers array with shape: {steers.shape}")
 
-        for i, paths in enumerate(batch_paths):
+        # for i, paths in enumerate(batch_paths):
+        def process_image(i):
             image = batch_paths[i]
             steering_angle = steering_angles[i]
 
@@ -46,12 +50,26 @@ class Generator(Sequence):
                 steering = steering_angle
                 # print(f"Loaded image shape: {image.shape}")
 
-            _, images[i] = preprocess(image)
-            # print(f"Preprocessed image shape: {images[i].shape}")
-            steers[i] = steering
-        output = np.stack((steers, speed), axis=1)
+            _, processed_image = preprocess(image)
+            return i, processed_image, steering
 
+        # 使用多线程并行处理图像
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+            results = executor.map(process_image, range(len(batch_paths)))
+
+        # 存储处理后的数据
+        for i, processed_image, steering in results:
+            images[i] = processed_image
+            steers[i] = steering
+
+        output = np.stack((steers, speed), axis=1)
         return images, output
+        #     _, images[i] = preprocess(image)
+        #     # print(f"Preprocessed image shape: {images[i].shape}")
+        #     steers[i] = steering
+        # output = np.stack((steers, speed), axis=1)
+        #
+        # return images, output
 
     def __len__(self):
         return len(self.path_to_pictures) // self.batch_size

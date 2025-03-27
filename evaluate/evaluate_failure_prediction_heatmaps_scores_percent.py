@@ -23,15 +23,17 @@ def calculate_results(tp, fp, tn, fn):
         precision = recall = f3 = accuracy = fpr = 0
     return precision, recall, f3, accuracy, fpr
 
+# 计算窗口分数
+def get_aggregate(series, aggregation_method):
+    if aggregation_method == "mean":
+        aggregated_score = series.mean()
+
+    elif aggregation_method == "max":
+        aggregated_score = series.max()
+
+    return aggregated_score
 
 def plot_score_distribution(normal_scores, anomalous_scores=None, threshold=None, title="Score Histogram", fig_dir = None):
-
-    # all_scores = normal_scores + (anomalous_scores or [])
-    # min_score = min(all_scores)
-    # max_score = max(all_scores)
-    # num_bins = int((max_score - min_score) / precision)
-    # bins = np.linspace(min_score, max_score, num_bins)
-
     plt.figure(figsize=(8, 5))
     plt.hist(normal_scores, bins=50, alpha=0.7, label='Nominal')
     if anomalous_scores is not None:
@@ -118,7 +120,10 @@ def load_heatmap_scores_hm(log_dir, heatmap_type, track, focus, perturb_folder, 
     data_df_nominal = pd.read_csv(path[0])
 
     # data_df_nominal['loss'] = original_losses
-    data_df_nominal['loss'] = max_normal - original_losses
+    if summary_type in ("gini", "topk"):
+        data_df_nominal['loss'] = max_normal - original_losses
+    else:
+        data_df_nominal['loss'] = original_losses
 
     # 2. load heatmap scores in anomalous conditions
 
@@ -133,15 +138,18 @@ def load_heatmap_scores_hm(log_dir, heatmap_type, track, focus, perturb_folder, 
     data_df_anomalous = pd.read_csv(path[0])
 
     # data_df_anomalous['loss'] = anomalous_losses
-    data_df_anomalous['loss'] = max_normal - anomalous_losses
+    if summary_type in ("gini", "topk"):
+        data_df_anomalous['loss'] = max_normal - anomalous_losses
+    else:
+        data_df_anomalous['loss'] = anomalous_losses
 
     # Debug
-    filename = f"{perturb_folder}_{heatmap_type}_flip_{aggregation_method}_{summary_type}.png"
+    filename = f"{perturb_folder}_{heatmap_type}_{aggregation_method}_{summary_type}.png"
 
     plt.hist(data_df_nominal['loss'], bins=50, alpha=0.7, label='Nominal')
     plt.hist(data_df_anomalous['loss'], bins=50, alpha=0.7, label='Anomalous')
     plt.legend()
-    plt.title(f"Distribution of Normal and {heatmap_type} Aggregation: {aggregation_method} Summary: {summary_type}")
+    plt.title(f"{perturb_folder}_{heatmap_type}_{aggregation_method}_{summary_type}")
     plt.savefig(os.path.join(fig_dir, filename))
     plt.close()
     # plt.show()
@@ -158,7 +166,7 @@ def load_heatmap_scores_hm(log_dir, heatmap_type, track, focus, perturb_folder, 
     return data_df_nominal, data_df_anomalous, data_evaluate
 
 def evaluate_failure_prediction(log_dir, heatmap_type, track, focus, perturb_folder, summary_type, aggregation_method, save_merge):
-    fig_dir = pathlib.Path(f"/home/jiaqq/Documents/ThirdEye-II/evaluate/0326_egt_percentile/{heatmap_type}")
+    fig_dir = pathlib.Path(f"/home/jiaqq/Documents/ThirdEye-II/evaluate/general/{heatmap_type}")
     os.makedirs(fig_dir, exist_ok=True)
 
     if summary_type in {'total_road_attention_ratio', 'avg_road_attention_ratio'}:
@@ -201,16 +209,15 @@ def evaluate_failure_prediction(log_dir, heatmap_type, track, focus, perturb_fol
     # 3. compute TP and FN using different time to misbehaviour windows in different value of reaction windows
     for seconds in range(1, 4):
         true_positive_windows, false_negative_windows, undetectable_windows, anomalous_window_scores = compute_tp_and_fn(save_merge,
-                                                                                            data_df_anomalous_hm,
-                                                                                            data_df_anomalous_hm['loss'],
-                                                                                            threshold_hm,
-                                                                                            seconds,
-                                                                                            data_evaluate_hm['aggregation_method'][0],
-                                                                                            data_df_anomalous_seg,
-                                                                                            data_df_anomalous_seg['loss'] if data_df_anomalous_seg is not None else None,
-                                                                                            threshold_seg )
+                                                                                                                        data_df_anomalous_hm,
+                                                                                                                        data_df_anomalous_hm['loss'],
+                                                                                                                        threshold_hm,
+                                                                                                                        seconds,
+                                                                                                                        data_evaluate_hm['aggregation_method'][0],
+                                                                                                                        data_df_anomalous_seg['loss'] if data_df_anomalous_seg is not None else None,
+                                                                                                                        threshold_seg )
 
-        plot_score_distribution(list_aggregated, anomalous_window_scores, threshold_hm, title=f"{perturb_folder}_{heatmap_type}_flip_{aggregation_method}_{summary_type}_{seconds}ttms", fig_dir=fig_dir)
+        plot_score_distribution(list_aggregated, anomalous_window_scores, threshold_hm, title=f"{perturb_folder}_{heatmap_type}_{aggregation_method}_{summary_type}_{seconds}ttms", fig_dir=fig_dir)
 
 
         precision, recall, f3, accuracy, fpr = calculate_results(true_positive_windows, false_positive_windows, true_negative_windows, false_negative_windows)
@@ -255,12 +262,12 @@ def evaluate_failure_prediction(log_dir, heatmap_type, track, focus, perturb_fol
 
 
 def compute_tp_and_fn(save_merge, data_df_anomalous_hm, losses_on_anomalous_hm, threshold_hm, seconds_to_anticipate,
-                      aggregation_method='mean', list_aggregated=None, data_df_anomalous_seg=None, losses_on_anomalous_seg=None, threshold_seg=None):
+                      aggregation_method='mean', losses_on_anomalous_seg=None, threshold_seg=None):
     print("time to misbehaviour (s): %d" % seconds_to_anticipate)
 
     # only occurring when conditions == unexpected
-    true_positive_windows = true_positive_windows_seg = 0
-    false_negative_windows = false_negative_windows_seg = 0
+    true_positive_windows = 0
+    false_negative_windows = 0
     undetectable_windows = 0
 
     # 总帧数： data index最大值，帧率10
@@ -292,7 +299,6 @@ def compute_tp_and_fn(save_merge, data_df_anomalous_hm, losses_on_anomalous_hm, 
     # 识别窗口应为事故帧往前数45帧到30帧之间
     frames_to_reassign_2 = fps_anomalous * (seconds_to_anticipate - 1)  # first frame n seconds before the failure
 
-    reaction_window = pd.Series()
     anomalous_window_scores = []
 
     # 遍历每个事故
@@ -313,13 +319,7 @@ def compute_tp_and_fn(save_merge, data_df_anomalous_hm, losses_on_anomalous_hm, 
         # 将crashed_anomalous_in_anomalous_conditions设为True表示这是监测窗口
         else:
             crashed_anomalous_in_anomalous_conditions.loc[item - frames_to_reassign: item - frames_to_reassign_2] = True
-
-            # reaction_window = pd.concat([reaction_window, crashed_anomalous_in_anomalous_conditions[item - frames_to_reassign: item - frames_to_reassign_2]])
             reaction_window = pd.Series(crashed_anomalous_in_anomalous_conditions[item - frames_to_reassign: item - frames_to_reassign_2])
-
-            # print("frames between %d and %d have been labelled as 1" % (
-            #     item - frames_to_reassign, item - frames_to_reassign_2))
-            # print("reaction frames size is %d" % len(reaction_window))
 
             # sma_anomalous来自heatmap_scores，并平滑均值？
             sma_anomalous_hm = pd.Series(losses_on_anomalous_hm)
@@ -333,14 +333,11 @@ def compute_tp_and_fn(save_merge, data_df_anomalous_hm, losses_on_anomalous_hm, 
             else:
                 sma_anomalous_seg = None
 
-            # 计算窗口分数
-            def aggregate(series, method):
-                return series.mean() if method == 'mean' else series.max()
-
-            aggregated_score_hm = aggregate(sma_anomalous_hm, aggregation_method)
+            aggregated_score_hm = get_aggregate(sma_anomalous_hm, aggregation_method)
             anomalous_window_scores.append(aggregated_score_hm)
+
             if sma_anomalous_seg is not None:
-                aggregated_score_seg = aggregate(sma_anomalous_seg, aggregation_method)
+                aggregated_score_seg = get_aggregate(sma_anomalous_seg, aggregation_method)
             else:
                 aggregated_score_seg = None
 
@@ -356,6 +353,7 @@ def compute_tp_and_fn(save_merge, data_df_anomalous_hm, losses_on_anomalous_hm, 
                         true_positive_windows += 1
                     elif aggregated_score_seg < threshold_seg:
                         false_negative_windows += 1
+
             # Do ThirdEye Evaluation
             else:
                 print("Threshold: ", threshold_hm, "; Compare hm score: ", aggregated_score_hm)
@@ -374,8 +372,8 @@ def compute_tp_and_fn(save_merge, data_df_anomalous_hm, losses_on_anomalous_hm, 
     print(f"undetectable_windows: {undetectable_windows}")
     print(f"Sum: {true_positive_windows + false_negative_windows + undetectable_windows}")
 
-    # assert len(all_first_frame_position_crashed_sequences) == (
-    #         true_positive_windows + false_negative_windows + undetectable_windows)
+    assert len(all_first_frame_position_crashed_sequences) == (
+            true_positive_windows + false_negative_windows + undetectable_windows)
 
     return true_positive_windows, false_negative_windows, undetectable_windows, anomalous_window_scores
 
@@ -401,31 +399,22 @@ def compute_fp_and_tn(data_df_nominal, aggregation_method):
     for idx, loss in enumerate(sma_nominal):
 
         if idx > 0 and idx % fps_nominal == 0:
-            aggregated_score = None
-            if aggregation_method == "mean":
-                # 时间窗口内的滑动平均值的平均分数
-                # .iloc获取从 (idx - fps_nominal) 到 idx 之间（10个值）的数据
-                aggregated_score = pd.Series(sma_nominal.iloc[idx - fps_nominal:idx]).mean()
 
-            elif aggregation_method == "max":
-                # 时间窗口内的滑动平均值的最大分数
-                aggregated_score = pd.Series(sma_nominal.iloc[idx - fps_nominal:idx]).max()
+            # .iloc获取从 (idx - fps_nominal) 到 idx 之间（10个值）的数据
+            aggregated_series = pd.Series(sma_nominal.iloc[idx - fps_nominal:idx])
+            aggregated_score = get_aggregate(aggregated_series, aggregation_method)
 
             list_aggregated.append(aggregated_score)
 
         elif idx == len(sma_nominal) - 1:
-
-            aggregated_score = None
-            if aggregation_method == "mean":
-                aggregated_score = pd.Series(sma_nominal.iloc[idx - fps_nominal:idx]).mean()
-            elif aggregation_method == "max":
-                aggregated_score = pd.Series(sma_nominal.iloc[idx - fps_nominal:idx]).max()
+            aggregated_series = pd.Series(sma_nominal.iloc[idx - fps_nominal:idx])
+            aggregated_score = get_aggregate(aggregated_series, aggregation_method)
 
             list_aggregated.append(aggregated_score)
 
     assert len(list_aggregated) == num_windows_nominal
     # confidence level 95%
-    threshold = get_threshold(list_aggregated, conf_level=0.95)
+    threshold = get_gamma_threshold(list_aggregated, conf_level=0.95)
 
     false_positive_windows = len([i for i in list_aggregated if i > threshold])
     true_negative_windows = len([i for i in list_aggregated if i <= threshold])

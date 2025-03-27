@@ -164,6 +164,3 @@ class PerturbationDrive:
         # tear down the simulator
         self.simulator.tear_down()
 
-    def perturb_tracks(self,
-                       perturbation_functions: List[str],):
-        pass

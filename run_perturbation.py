@@ -9,7 +9,7 @@ sys.path.append(project_root)
 from perturbationdrive.run_perturb_tool import *
 from perturbationdrive.utils.perturb_conf import perturb_cfgs
 
-object_name = "udacity_tracks"  # "udacity_tracks" or "road_generator"
+object_name = "road_generator"  # "udacity_tracks" or "road_generator"
 
 config={
     'model_name' : '',
@@ -23,14 +23,13 @@ if __name__ == '__main__':
 
     if object_name == "udacity_tracks":
 
-        # config['model_name'] = "track3-steer-throttle.h5"
-        # config['model_path'] = os.path.join("./model/ckpts/ads", config['model_name'])
-        config['perturbations'] = ['cutout_filter']
+        config['model_name'] = "track1-dave2-change_activation_function-004.h5"
+        config['model_path'] = os.path.join("/home/jiaqq/Documents/ThirdEye-II/model/ckpts/ads-mutation/change_activation_function_sigmoid_4-9/track1_lake/",
+                                            config['model_name'])
+        config['perturbations'] = ['change_activation_function_sigmoid']
         config['track_index'] = 1
         config['start_scale'] = 0
         perturb_cfgs['perturb'] = False
-        config['model_name'] = "track1_mutated_model_final.h5"
-        config['model_path'] = os.path.join("./model/ckpts/ads/", config['model_name'])
 
         from perturbationdrive.utils.perturb_conf import udacity_tracks
         # perturbed_simulate(config)
@@ -38,10 +37,13 @@ if __name__ == '__main__':
 
     elif object_name == "road_generator":
 
-        config['model_name'] = "roadGen_trained.h5"
-        config['model_path'] = os.path.join("./model/ckpts/ads", config['model_name'])
-        config['perturbations'] = ["histogram_equalisation"]
-        config['start_scale'] = 5
+        config['model_name'] = "roadGen_add_weights_regularisation_l1_0.001-004.h5"
+        config['model_path'] = os.path.join(
+            "/home/jiaqq/Documents/ThirdEye-II/model/ckpts/ads-mutation/add_weights_regularisation_l1_0.001/roadGen/",
+            config['model_name'])
+        config['perturbations'] = ['add_weights_regularisation_l1_0.001']
+
+        perturb_cfgs['perturb'] = False
 
         from perturbationdrive.utils.perturb_conf import road_generator
         run_perturb_road_generator(road_generator, config, perturb_cfgs)

@@ -74,7 +74,7 @@ unbalance_train_data = {
 make_output_classes_overlap = {
     "name": 'output_classes_overlap',
     "make_output_classes_overlap_udp": False,
-    "make_output_classes_overlap_pct": -1,
+    "make_output_classes_overlap_pct": mutate_cfgs['mutate_func_params']['make_output_classes_overlap_pct'],
     "runs_number": 10,
     "annotation_params": ["x_train", "y_train"],
     "bs_lower_bound": 0,
@@ -190,7 +190,7 @@ change_weights_initialisation = {
 }
 
 change_optimisation_function = {
-    "optimisation_function_udp": "sgd",
+    "optimisation_function_udp": mutate_cfgs['mutate_func_params']['new_optimisation_function'],
     "annotation_params": [],
     "mutation_target": None,
     "runs_number": 10,
@@ -264,12 +264,13 @@ change_dropout_rate = {
 
 add_weights_regularisation = {
     "name": 'add_weights_regularisation',
-    "weights_regularisation_udp": getattr(keras.regularizers, mutate_cfgs["mutate_func_params"]["weights_regularisation"])(),
+    "weights_regularisation_udp": mutate_cfgs["mutate_func_params"]["weights_regularisation"], #getattr(keras.regularizers, mutate_cfgs["mutate_func_params"]["weights_regularisation"])(),
+    "reg_strength": mutate_cfgs["mutate_func_params"]["weights_regularisation_strength"],
     "layer_udp": 3,
     "runs_number": 10,
     "annotation_params": [],
     "layer_mutation": True,
-    "current_index": int(mutate_cfgs["mutate_func_params"]["layer"]),
+    "current_index": 0,#int(mutate_cfgs["mutate_func_params"]["weights_regular_layer"]),
     "mutation_target": None,
     "search_type": 'exhaustive'
 }

@@ -51,7 +51,7 @@ class UnityProcess(object):
             return
 
         cwd = os.getcwd()
-        file_name = (sim_path.strip().replace('.app', '').replace('.exe', '').replace('.x86_64', '').replace('.x86', ''))
+        file_name = (str(sim_path).strip().replace('.app', '').replace('.exe', '').replace('.x86_64', '').replace('.x86', ''))
         true_filename = os.path.basename(os.path.normpath(file_name))
         launch_string = None
         port_args = ["--port", str(port), '-logFile', 'unitylog.txt']

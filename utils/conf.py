@@ -24,11 +24,11 @@ Training_Configs = defaultdict()
 Training_Configs['training_data_dir'] = PROJECT_DIR.joinpath("Data")
 Training_Configs['model_dir'] = "ads"
 Training_Configs['TEST_SIZE'] = 0.2  # split of training data used for the validation set (keep it low)
-Training_Configs['BATCH_SIZE'] = 128
+Training_Configs['BATCH_SIZE'] = 1024 #128
 Training_Configs['WITH_BASE'] = False
 Training_Configs['BASE_MODEL'] = 'track1-steer-throttle.h5'
 Training_Configs['LEARNING_RATE'] = 1e-4
-Training_Configs['EPOCHS'] = 200
+Training_Configs['EPOCHS'] = 10
 Training_Configs['SHUFFLE_DATA'] = True
 # SAMPLE_DATA = False
 # AUG_CHOOSE_IMAGE = True
@@ -46,7 +46,7 @@ track_infos[1]['track_name'] = 'lake'
 track_infos[1]['model_name'] = 'track1-steer-throttle.h5'
 track_infos[1]['model_path'] = CHECKPOINT_DIR.joinpath(Training_Configs['model_dir'], track_infos[1]['model_name'])
 track_infos[1]['simulator'] = simulator_infos[1]
-track_infos[1]['driving_style'] = ["normal_lowspeed", "reverse_lowspeed","normal_lowspeed", "reverse_lowspeed"]
+track_infos[1]['driving_style'] = ["normal_lowspeed", "reverse_lowspeed", "normal_lowspeed", "reverse_lowspeed"]
 track_infos[1]['training_data_dir'] = Training_Configs['training_data_dir'].joinpath('lane_keeping_data', 'track1_throttle')
 
 track_infos[3]['track_name'] = 'mountain'
@@ -72,11 +72,23 @@ model_cfgs['num_outputs'] = 2 # when we wish to predict steering and throttle:
 
 mutate_cfgs = dict()
 mutate_cfgs['image_height'] = 160
-mutate_cfgs['do_mutate'] = False
+mutate_cfgs['do_mutate'] = True
 # for add_weights_regularisation
 mutate_cfgs['mutate_dir'] = "ads-mutation"
-mutate_cfgs['mutate_func'] = "change_label"
-mutate_cfgs['mutate_func_params'] = {"make_output_classes_overlap": "-1", "weights_regularisation": "l1_l2", "layer": "6", "dropout_rate": "0.125", "change_label_pct": 0, "new_activation_function": "tanh" ,"new_loss_function": "mean_absolute_error", "new_learning_rate": 0.00001}
+mutate_cfgs['mutate_func'] = "change_activation_function"
+mutate_cfgs['mutate_func_params'] = {"make_output_classes_overlap_pct": -1,
+                                     "weights_regularisation": "l2",
+                                     "weights_regularisation_strength": 0.001,
+                                     "layer": "6",
+                                     "dropout_rate": "0.625",
+                                     "change_label_pct": -1,
+                                     "new_activation_function": "sigmoid",
+                                     "new_loss_function": "squared_hinge",
+                                     "new_learning_rate": 0.00001,
+                                     "new_optimisation_function": "adamax"}
+                                    # import mutation.utils.constants as const
+                                    # a list of all possible values is under const.keras_optimisers
+
 # for change_loss_function
 # mutate_cfgs['mutate_dir'] = "ads-mutation"
 # mutate_cfgs['mutate_func'] = "change_loss_function"

@@ -132,34 +132,38 @@ def operator_add_weights_regularisation(model):
     if not model:
         print("raise,log we have probllems")
 
-    # layer that needs to add weights_regularization
-    current_index = props.add_weights_regularisation["current_index"]
-
     tmp = model.get_config()
 
-    print("Add Regulariser to a layer" + str(current_index))
+    for current_index in range(2, 10):
+        if "kernel_regularizer" in tmp['layers'][current_index]['config'] and \
+                tmp['layers'][current_index]['config'].get('kernel_regularizer') is None:
+            print("Start adding weights regulariser")
+            if props.add_weights_regularisation["weights_regularisation_udp"] is not None:
+                print("Weights regularisation decides on udp")
+                new_regulariser = props.add_weights_regularisation["weights_regularisation_udp"]
+            elif props.add_weights_regularisation["mutation_target"] is None:
+                regularisers = copy.copy(const.keras_regularisers)
+                new_regulariser = random.choice(regularisers)
+                props.add_weights_regularisation["mutation_target"] = new_regulariser
+            else:
+                new_regulariser = props.add_weights_regularisation["mutation_target"]
 
-    if "kernel_regularizer" in tmp['layers'][current_index]['config'] and \
-            tmp['layers'][current_index]['config'].get('kernel_regularizer') is None:
-        print("Start adding weights regulariser")
-        if props.add_weights_regularisation["weights_regularisation_udp"] is not None:
-            print("Weights regularisation decides on udp")
-            new_regulariser = props.add_weights_regularisation["weights_regularisation_udp"]
-        elif props.add_weights_regularisation["mutation_target"] is None:
-            regularisers = copy.copy(const.keras_regularisers)
-            new_regulariser = random.choice(regularisers)
-            props.add_weights_regularisation["mutation_target"] = new_regulariser
-        else:
-            new_regulariser = props.add_weights_regularisation["mutation_target"]
+            print("____________________________________")
+            print("Current Index: " + str(current_index))
+            print("New Reg:" + new_regulariser)
+            reg_strength = props.add_weights_regularisation["reg_strength"]
+            print("New Reg Strength:" + str(reg_strength))
 
-        print("____________________________________")
-        print("Current Index: " + str(current_index))
-        print("New Reg:" + str(new_regulariser))
+            if new_regulariser == "l1":
+                new_regulariser = {"class_name": "L1", "config": {"l1": reg_strength}}
+            elif new_regulariser == "l2":
+                new_regulariser = {"class_name": "L2", "config": {"l2": reg_strength}}
+            elif new_regulariser == "l1_l2":
+                new_regulariser = {"class_name": "L1L2", "config": {"l1": reg_strength, "l2": reg_strength}}
+            else:
+                raise ValueError(f"Invalid regularizer type: {new_regulariser}")
 
-        tmp['layers'][current_index]['config']['kernel_regularizer'] = new_regulariser
-    else:
-        raise Exception(str(current_index),
-                                   "Not possible to apply the add weights regularisation mutation to the layer ")
+            tmp['layers'][current_index]['config']['kernel_regularizer'] = new_regulariser
 
     model = mu.model_from_config(model, tmp)
 

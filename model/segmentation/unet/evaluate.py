@@ -150,20 +150,21 @@ if __name__ == '__main__':
     else:
         model_name = None
     #test_set_evaluation(track, weather, model_name, csv_filename)
-    root_folder = f"perturbationdrive/logs/{track}" # f"perturbationdrive/logs/{track}" or f"mutation/logs/{track}"
+    # root_folder = pathlib.Path(f"/data/ThirdEye-II/perturbationdrive/logs/{track}") # f"perturbationdrive/logs/{track}" or f"mutation/logs/{track}"
+    root_folder = pathlib.Path(f"/home/jiaqq/Documents/ThirdEye-II/mutation/logs/{track}") # f"perturbationdrive/logs/{track}" or f"mutation/logs/{track}"
 
     for folder_name in os.listdir(root_folder):
-        if folder_name == "mountain_normal":
-            print("Running Segmentation on folder: ", folder_name)
+        # if folder_name == "lake_cutout_filter_scale7_log":
+        print("Running Segmentation on folder: ", folder_name)
 
-            folder_path = os.path.join(root_folder, folder_name)
-            if os.path.isdir(folder_path) and model_name is not None:
-                image_dir = os.path.join(folder_path, "image_logs/")
-                csv_filename = f"{folder_name}.csv"
-                if not os.path.isdir(os.path.join(image_dir, f"computed_segmentation_{track}_{weather}/")):
-                    all_set_evaluation_and_save(track, weather, model_name, image_dir, csv_filename)
-                else:
-                    print("Segmentation on folder: ", folder_name, " already exists")
+        folder_path = os.path.join(root_folder, folder_name)
+        if os.path.isdir(folder_path) and model_name is not None:
+            image_dir = os.path.join(folder_path, "image_logs/")
+            csv_filename = f"{folder_name}.csv"
+            if not os.path.isdir(os.path.join(image_dir, f"computed_segmentation_{track}_{weather}/")):
+                all_set_evaluation_and_save(track, weather, model_name, image_dir, csv_filename)
+            else:
+                print("Segmentation on folder: ", folder_name, " already exists")
 
 
     # track = "mountain"
